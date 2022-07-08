@@ -3,8 +3,9 @@
   windows_subsystem = "windows"
 )]
 
+mod cipher;
 mod commands;
-use crate::commands::{backup};
+use crate::commands::{backup, encrypt_file, decrypt_file};
 
 fn main() {
   let context = tauri::generate_context!();
@@ -14,7 +15,7 @@ fn main() {
     } else {
       tauri::Menu::default()
     })
-    .invoke_handler(tauri::generate_handler![backup])
+    .invoke_handler(tauri::generate_handler![backup, encrypt_file, decrypt_file])
     .run(context)
     .expect("error while running tauri application");
 }

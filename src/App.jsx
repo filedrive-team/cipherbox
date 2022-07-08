@@ -23,10 +23,51 @@ function App() {
               message("nothing selected")
             } else {
               // user selected a single file
-              invoke("backup", {path: selected})
+              //invoke("backup", {path: selected})
+              // try {
+              //  await invoke("encrypt_file", {path: selected})
+              // } catch(err) {
+              //   message(err)
+              // }
+              try {
+               await invoke("encrypt_file", {path: selected})
+              } catch(err) {
+                message(err)
+              }
+              
             }
           }}>
-            select files
+            select files to encrypt
+          </button>
+        </p>
+        <p>
+          <button type="button" onClick={async () => {
+            const selected = await open({
+              
+            });
+            if (Array.isArray(selected)) {
+              // user selected multiple files
+              message(selected.join())
+            } else if (selected === null) {
+              // user cancelled the selection
+              message("nothing selected")
+            } else {
+              // user selected a single file
+              //invoke("backup", {path: selected})
+              // try {
+              //  await invoke("encrypt_file", {path: selected})
+              // } catch(err) {
+              //   message(err)
+              // }
+              try {
+               await invoke("decrypt_file", {path: selected})
+              } catch(err) {
+                message(err)
+              }
+              
+            }
+          }}>
+            select files to decrypt
           </button>
         </p>
         <p>
