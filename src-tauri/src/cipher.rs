@@ -23,8 +23,7 @@ const TEST_NONCE:[u8;12] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04
 
 pub(crate) fn set_password(password: String, path_to_save: PathBuf) -> Result<(), io::Error> {
     let drived = pbkdf2_simple(&password, PBKDF2IC)?;
-    write(path_to_save, drived.as_bytes())?;
-    Ok(())
+    write(path_to_save, drived.as_bytes())
 }
 
 pub(crate) fn verify_password(password: String, path_to_save: PathBuf) -> Result<bool, String> {
@@ -45,8 +44,7 @@ pub(crate) fn encrypt_or_decrypt_file(source: PathBuf, target: PathBuf) -> anyho
     let mut cipher = chacha20::ChaCha20::new(&TEST_KEY[..], &TEST_NONCE[..]);
     let mut encoded: Vec<u8> = repeat(0u8).take(sd.len()).collect();
     cipher.process(&sd, &mut encoded);
-    write(target, encoded)?;
-    Ok(())
+    write(target, encoded)
 }
 
 #[cfg(test)]
