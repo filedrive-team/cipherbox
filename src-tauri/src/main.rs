@@ -6,6 +6,7 @@
 mod cipher;
 mod commands;
 mod db;
+mod models;
 
 use tauri::Manager;
 
