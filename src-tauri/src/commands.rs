@@ -7,7 +7,29 @@ use std::ffi::{OsString};
 use std::error::Error;
 static DRIVED_PASSWORD_NAME: &str = "drivedpw";
 
+/*
+ * api - backup directory
+ */
 
+/*
+ * api - backup files
+ */
+
+/*
+ * api - create a box for data backup
+ */
+
+/*
+ * api - box objects list
+ */
+
+/*
+ * api - box list
+ */
+
+/*
+ * api - create password for cipherbox 
+ */
 #[tauri::command]
 pub async fn password_set(password: String, app: AppHandle) -> Result<(), Box<dyn Error>> {
     let mut path_to_save = app.path_resolver().app_dir().ok_or("failed to get app dir")?;
@@ -16,6 +38,10 @@ pub async fn password_set(password: String, app: AppHandle) -> Result<(), Box<dy
     Ok(())
 }
 
+/*
+ * api - verify password 
+ *      will unlock cipherbox for user if pass the verification
+ */
 #[tauri::command]
 pub async fn password_verify(password: String, app: AppHandle) -> Result<bool, String> {
     let mut path_to_save = app.path_resolver().app_dir().ok_or("failed to get app dir")?;
