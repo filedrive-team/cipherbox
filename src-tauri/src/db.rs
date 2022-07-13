@@ -21,6 +21,7 @@ pub(crate) fn db_init(app_dir: &mut std::path::PathBuf) -> Result<DB, Box<dyn st
             size_total INTEGER,
             secret BLOB,
             provider  INTEGER
+            active INTEGER
         );
         CREATE TABLE IF NOT EXISTS cbox_obj (
             id    INTEGER PRIMARY KEY AUTOINCREMENT,

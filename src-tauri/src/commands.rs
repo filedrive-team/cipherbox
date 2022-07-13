@@ -5,7 +5,7 @@ use tauri::{AppHandle};
 use crate::cipher::{encrypt_or_decrypt_file, set_password, verify_password};
 use std::ffi::{OsString};
 use std::error::Error;
-static DRIVED_PASSWORD_NAME: &str = "drivedpw";
+static CIPHER_MESSAGE_NAME: &str = "cipher_message";
 
 /*
  * api - backup directory
@@ -33,7 +33,7 @@ static DRIVED_PASSWORD_NAME: &str = "drivedpw";
 #[tauri::command]
 pub async fn password_set(password: String, app: AppHandle) -> Result<(), Box<dyn Error>> {
     let mut path_to_save = app.path_resolver().app_dir().ok_or("failed to get app dir")?;
-    path_to_save.push(DRIVED_PASSWORD_NAME);
+    path_to_save.push(CIPHER_MESSAGE_NAME);
     set_password(password, path_to_save)?;
     Ok(())
 }
@@ -45,7 +45,7 @@ pub async fn password_set(password: String, app: AppHandle) -> Result<(), Box<dy
 #[tauri::command]
 pub async fn password_verify(password: String, app: AppHandle) -> Result<bool, String> {
     let mut path_to_save = app.path_resolver().app_dir().ok_or("failed to get app dir")?;
-    path_to_save.push(DRIVED_PASSWORD_NAME);
+    path_to_save.push(CIPHER_MESSAGE_NAME);
     verify_password(password, path_to_save)
 }
 
