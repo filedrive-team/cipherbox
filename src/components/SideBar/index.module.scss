@@ -1,0 +1,19 @@
+.sideWrap {
+  height: 100vh;
+  width: 72px;
+  background: linear-gradient(113deg, var(--color-2e2d4b) 0%, var(--color-010000) 71%);
+  padding-top: 100px;
+  box-sizing: border-box;
+  .item {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: 10px;
+    color: var(--color-FFFFFF-80);
+
+    &>:last-child {
+      padding-top: 5px;
+    }
+  }
+}
