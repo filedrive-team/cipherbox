@@ -15,6 +15,7 @@ use std::fs::{read, write};
 use std::path::{PathBuf};
 use std::io;
 use std::iter::{repeat};
+use std::sync::{Mutex};
 use rand::{
     Rng,
     os::{OsRng}
@@ -32,23 +33,26 @@ const TEST_KEY:[u8;32] = [
     0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
 ];
 const TEST_NONCE:[u8;12] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07];
+#[derive(Default)]
+pub struct DerivedKey(Mutex<Option<[u8;32]>>);
 
-pub(crate) fn set_password(password: String, path_to_save: PathBuf) -> Result<(), io::Error> {
+pub(crate) fn set_password(password: String, path_to_save: PathBuf) -> Result<[u8;32], io::Error> {
     // generate a nonce Vec<u8> 
     let mut nonce = gen_nonce(16)?;
     // using pbkdf2 derive a key from password
-    let drived = pbkdf2_with_nonce(&password, &nonce, PBKDF2IC);
+    let derived = pbkdf2_with_nonce(&password, &nonce, PBKDF2IC);
     // using derived key to encryted a message
     let msg = MSG.as_bytes();
     let mut output: Vec<u8> = repeat(0u8).take(msg.len()).collect();
-    encrypt_or_decrypt(msg, &mut output, &drived, &nonce[..12]);
+    encrypt_or_decrypt(msg, &mut output, &derived, &nonce[..12]);
     
     nonce.append(&mut output);
     // save encryted nonce and message to disk
-    write(path_to_save, nonce)
+    write(path_to_save, nonce)?;
+    Ok(derived)
 }
 
-pub(crate) fn verify_password(password: String, path_to_save: PathBuf) -> Result<bool, String> {
+pub(crate) fn verify_password(password: String, path_to_save: PathBuf) -> Result<[u8;32], String> {
     let encrypted_msg = match read(path_to_save) {
         Ok(d) => d, 
         Err(err) => return Err(format!("{}", err))
@@ -66,12 +70,7 @@ pub(crate) fn verify_password(password: String, path_to_save: PathBuf) -> Result
     if output != MSG.as_bytes() {
         return Err("password not match".to_owned())
     }
-    Ok(true)
-    // let drived = std::str::from_utf8(derived.as_ref()).map_err(|e| format!("{}", e))?;
-    // match pbkdf2_check(&password, drived) {
-    //     Ok(ok) => Ok(ok),
-    //     Err(err) => Err(err.to_owned())
-    // }
+    Ok(derived)
 }
 
 
@@ -110,9 +109,10 @@ mod test {
         let password = "cipherbox$0awesome0$".to_owned();
         let mut path = std::env::temp_dir();
         path.push("message2verify");
-        set_password(password.clone(), path.clone()).unwrap();
+        let k1 = set_password(password.clone(), path.clone()).unwrap();
 
-        assert!(verify_password(password.clone(), path).unwrap());
+        let k2 = verify_password(password.clone(), path).unwrap();
+        assert_eq!(k1, k2);
     }
 
     #[test]

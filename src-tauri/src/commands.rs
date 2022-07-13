@@ -1,12 +1,16 @@
 #![allow(dead_code)]
 use std::fs;
 use std::path::{PathBuf};
-use tauri::{AppHandle};
+use tauri::{AppHandle, State};
 use crate::cipher::{encrypt_or_decrypt_file, set_password, verify_password};
 use std::ffi::{OsString};
 use std::error::Error;
+use std::sync::{Mutex};
+
 static CIPHER_MESSAGE_NAME: &str = "cipher_message";
 
+#[derive(Default)]
+pub struct DerivedKey(Mutex<Option<[u8;32]>>);
 /*
  * api - backup directory
  */
@@ -31,10 +35,12 @@ static CIPHER_MESSAGE_NAME: &str = "cipher_message";
  * api - create password for cipherbox 
  */
 #[tauri::command]
-pub async fn password_set(password: String, app: AppHandle) -> Result<(), Box<dyn Error>> {
+pub async fn password_set(password: String, app: AppHandle, dk: State<'_, DerivedKey>) -> Result<(), Box<dyn Error>> {
     let mut path_to_save = app.path_resolver().app_dir().ok_or("failed to get app dir")?;
     path_to_save.push(CIPHER_MESSAGE_NAME);
-    set_password(password, path_to_save)?;
+    let key = set_password(password, path_to_save)?;
+    
+    *dk.0.lock().unwrap() = Some(key);
     Ok(())
 }
 
@@ -43,10 +49,12 @@ pub async fn password_set(password: String, app: AppHandle) -> Result<(), Box<dy
  *      will unlock cipherbox for user if pass the verification
  */
 #[tauri::command]
-pub async fn password_verify(password: String, app: AppHandle) -> Result<bool, String> {
+pub async fn password_verify(password: String, app: AppHandle, dk: State<'_, DerivedKey>) -> Result<bool, String> {
     let mut path_to_save = app.path_resolver().app_dir().ok_or("failed to get app dir")?;
     path_to_save.push(CIPHER_MESSAGE_NAME);
-    verify_password(password, path_to_save)
+    let key = verify_password(password, path_to_save)?;
+    *dk.0.lock().unwrap() = Some(key);
+    Ok(true)
 }
 
 

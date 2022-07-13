@@ -12,6 +12,7 @@ use tauri::Manager;
 
 use crate::commands::{backup, encrypt_file, decrypt_file};
 use crate::db::{db_init};
+use crate::cipher::{DerivedKey};
 
 fn main() {
   let context = tauri::generate_context!();
@@ -31,6 +32,7 @@ fn main() {
     } else {
       tauri::Menu::default()
     })
+    .manage(DerivedKey::default())
     .invoke_handler(tauri::generate_handler![backup, encrypt_file, decrypt_file])
     .run(context)
     .expect("error while running tauri application");
