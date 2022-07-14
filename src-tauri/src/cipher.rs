@@ -34,7 +34,7 @@ const TEST_KEY:[u8;32] = [
 ];
 const TEST_NONCE:[u8;12] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07];
 #[derive(Default)]
-pub struct DerivedKey(Mutex<Option<[u8;32]>>);
+pub struct DerivedKey(pub Mutex<Option<[u8;32]>>);
 
 pub(crate) fn set_password(password: String, path_to_save: PathBuf) -> Result<[u8;32], io::Error> {
     // generate a nonce Vec<u8> 

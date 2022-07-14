@@ -1,21 +1,22 @@
 use std::ffi::OsString;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct CBox {
-    id: i32,
-    name: OsString,
+    pub id: i32,
+    pub name: String,
     // most of time backup should be encrypt unless user intentionly set it false, maybe for public share
-    encrypt_data: bool,
+    pub encrypt_data: bool,
     // total objects in the box
-    obj_total: u64,
+    pub obj_total: u64,
     // total size of objects in the box
-    size_total: u64,
+    pub size_total: u64,
     // the key use to do encrypt works
-    secret: Vec<u8>,
+    pub secret: Vec<u8>,
     // the storage provider, like web3.storage
-    provider: i32,
+    pub provider: i32,
     // the current showing box for user
-    active: u8,
+    pub active: u8,
 }
 
 #[derive(Debug)]

@@ -1,16 +1,24 @@
 #![allow(dead_code)]
 use std::fs;
 use std::path::{PathBuf};
-use tauri::{AppHandle, State};
-use crate::cipher::{encrypt_or_decrypt_file, set_password, verify_password};
 use std::ffi::{OsString};
 use std::error::Error;
-use std::sync::{Mutex};
+use tauri::{AppHandle, State};
+use crate::{
+    cipher::{encrypt_or_decrypt_file, set_password, verify_password, DerivedKey},
+    models::{CBox},
+    db::{DB},
+};
+use rusqlite::{params};
+use crate::mgr::App;
+
 
 static CIPHER_MESSAGE_NAME: &str = "cipher_message";
 
-#[derive(Default)]
-pub struct DerivedKey(Mutex<Option<[u8;32]>>);
+pub struct BoxParams {
+    name: String, 
+    encrypt_data: bool,
+}
 /*
  * api - backup directory
  */
@@ -22,7 +30,21 @@ pub struct DerivedKey(Mutex<Option<[u8;32]>>);
 /*
  * api - create a box for data backup
  */
-
+#[tauri::command]
+pub async fn box_create(app: State<'_, App>) -> Result<CBox, String> {
+    let mut b = CBox::default();
+    
+    if app.has_connection() {
+        b.name = String::from("has connection")
+    } else {
+        b.name = String::from("has not connection")
+    }
+    Ok(b)
+    // conn.execute("
+    //     insert into cbox (name, encrypt_data) values (?1, ?2)
+    // ", params![pms.name, pms.encrypt_data])?;
+    // Ok(())
+}
 /*
  * api - box objects list
  */
