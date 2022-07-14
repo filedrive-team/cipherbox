@@ -3,6 +3,7 @@ import SideBar from '@/components/SideBar';
 import styles from './index.module.scss';
 import classNames from 'classnames';
 import { Input, Table } from 'antd';
+import { RouterPath } from '@/router';
 import { ReactComponent as SearchIcon } from '@/assets/home/search.svg';
 import {
   copyIcon,
@@ -10,6 +11,7 @@ import {
   switchIcon,
   switchButton,
 } from '@/styles/home.module.scss';
+import { useHistory } from 'react-router';
 
 const tabData = [
   {
@@ -65,13 +67,21 @@ const data = [
 ];
 
 const Home = () => {
+  const history = useHistory();
   return (
     <div className={styles.homeWrap} onClick={() => {}}>
       <SideBar />
       <div className={classNames(styles.homeBody)}>
         <div className={styles.top} data-tauri-drag-region>
           <Input placeholder={'请输入'} prefix={<SearchIcon />} />
-          <div>反馈</div>
+          <div
+            onClick={() => {
+              history.push(RouterPath.test);
+            }}
+            style={{ cursor: 'pointer' }}
+          >
+            反馈
+          </div>
         </div>
         <div className={styles.tabWrap}>
           {tabData.map((value, index) => {
