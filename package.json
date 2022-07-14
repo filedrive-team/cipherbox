@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^1.0.1",
+    "antd": "^4.21.6",
     "babel-loader": "8.1.0",
     "babel-preset-mobx": "^2.0.0",
     "babel-preset-react-app": "^10.0.0",
