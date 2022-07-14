@@ -43,11 +43,3 @@ fn main() {
     .expect("error while running tauri application");
 }
 
-
-#[cfg(test)]
-mod test {
-  #[test]
-  fn test_a () {
-
-  }
-}

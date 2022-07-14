@@ -15,6 +15,8 @@ pub struct CBox {
     pub secret: Vec<u8>,
     // the storage provider, like web3.storage
     pub provider: i32,
+    // access token for provider api
+    pub access_token: String,
     // the current showing box for user
     pub active: u8,
 }
