@@ -327,4 +327,52 @@ mod test {
         // dbg!(&res);
         // dbg!(&res.bytes().unwrap());
     }
+    use serde::{Serialize};
+
+    #[derive(Serialize)]
+    pub struct TCarGen {
+        pub name: String,
+        pub data: Vec<u8>,
+    }
+    #[async_std::test]
+    async fn test_upload_car() {
+        // let rawdata = to_vec(&TCarGen {
+        //     name: "ii".into(),
+        //     data: b"Hush little baby don't say a word".to_vec(),
+        // }).unwrap();
+        // let buffer: Arc<RwLock<Vec<u8>>> = Default::default();
+        // let cid = Cid::new_v1(DAG_CBOR, Blake2b256.digest(&rawdata));
+        // let header = CarHeader {
+        //     roots: vec![cid],
+        //     version: 1,
+        // };
+        // assert_eq!(to_vec(&header).unwrap().len(), 60);
+
+        // let (tx, mut rx) = bounded(10);
+
+        // let buffer_cloned = buffer.clone();
+        // let write_task = async_std::task::spawn(async move {
+        //     header
+        //         .write_stream_async(&mut *buffer_cloned.write().await, &mut rx)
+        //         .await
+        //         .unwrap()
+        // });
+
+        // tx.send((cid, rawdata.clone())).await.unwrap();
+        // drop(tx);
+        // write_task.await;
+
+        // let buffer: Vec<_> = buffer.read().await.clone();
+        
+        // let client = reqwest::blocking::Client::new();
+        // let res = client.post("https://api.web3.storage/car")
+        //     .header(reqwest::header::CONTENT_TYPE, "application/vnd.ipld.car")
+        //     .header("Authorization", "Bearer ...")
+        //     .body(buffer)
+        //     .send()
+        //     .unwrap();
+        // dbg!(&res);
+        // dbg!(&res.bytes().unwrap());
+        
+    }
 }
