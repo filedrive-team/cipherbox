@@ -1,0 +1,93 @@
+.passwordWrap {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: var(--color-F0F0F4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .bgWrap {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+
+    img {
+      width: 876px;
+      height: 667px;
+    }
+  }
+
+  .contentWrap {
+    width: 800px;
+    display: flex;
+    justify-content: space-between;
+    z-index: 10;
+
+    .leftWrap {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+
+      .titleWrap {
+        .title {
+          font-family: HanSansSC;
+          font-size: 26px;
+          font-weight: bold;
+          flex-shrink: 0;
+
+          span {
+            color: var(--color-5877F3);
+          }
+        }
+
+        .subTitle {
+          font-size: 12px;
+          color: var(--color-111029);
+        }
+      }
+
+
+      :global {
+        .ant-input {
+          height: 34px;
+          max-width: 280px;
+          border: 1px solid var(--color-CACED7);
+          border-radius: 8px;
+        }
+
+        .ant-input:focus {
+          box-shadow: 0px 0px;
+          border: 1px solid var(--color-CACED7);
+        }
+
+        input::placeholder {
+          color: var(--color-CACED7);
+        }
+      }
+
+      .confirm {
+        width: 180px;
+        height: 34px;
+        margin-top: 22px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-image: url("@/assets/password/confirm.svg");
+        background-repeat: no-repeat;
+        background-size: contain;
+        color: var(--color-FFFFFF);
+        font-size: 12px;
+        cursor: pointer;
+      }
+    }
+
+    .rightWrap {
+      img {
+        width: 398px;
+        height: 260px;
+      }
+    }
+
+  }
+}
