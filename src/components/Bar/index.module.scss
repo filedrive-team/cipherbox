@@ -5,7 +5,7 @@
   left: 0;
   padding-left: 10px;
   padding-top: 10px;
-
+  z-index: 1000;
   &>:not(:first-child) {
     margin-left: 8px;
   }
