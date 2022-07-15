@@ -4,6 +4,7 @@ import MRouter from '@/router';
 import * as stores from '@/store';
 import { useEffect } from 'react';
 import '@/styles/main.scss';
+import '@/assets/font/HanSansSC.otf';
 import 'antd/dist/antd.min.css';
 function App() {
   useEffect(() => {
