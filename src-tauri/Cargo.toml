@@ -23,6 +23,15 @@ anyhow = "1.0.58"
 rusqlite = { version = "0.27.0", features = ["bundled"] }
 rand = "0.4.6"
 rustc-serialize = "0.3.24"
+serde_cbor = "0.11.2"
+fvm_ipld_car = "0.4.1"
+cid = "0.8.5"
+fvm_ipld_encoding = "0.2.2"
+async-std = { version = "1.12.0", features = ["attributes"] }
+fvm_ipld_blockstore = "0.1.1"
+reqwest = { version = "^0.11", features = ["blocking", "json"] }
+http = "0.2.8"
+tiny_http = "0.11.0"
 
 [features]
 # by default Tauri runs in production mode

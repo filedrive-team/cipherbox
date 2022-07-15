@@ -57,12 +57,12 @@ pub async fn box_create(app: State<'_, App>) -> Result<CBox, String> {
  * api - create password for cipherbox 
  */
 #[tauri::command]
-pub async fn password_set(password: String, app: AppHandle, dk: State<'_, DerivedKey>) -> Result<(), Box<dyn Error>> {
+pub async fn password_set(password: String, app: AppHandle, capp: State<'_, App>) -> Result<(), Box<dyn Error>> {
     let mut path_to_save = app.path_resolver().app_dir().ok_or("failed to get app dir")?;
     path_to_save.push(CIPHER_MESSAGE_NAME);
     let key = set_password(password, path_to_save)?;
     
-    *dk.0.lock().unwrap() = Some(key);
+    *capp.user_key.lock().unwrap() = Some(key);
     Ok(())
 }
 
@@ -71,11 +71,11 @@ pub async fn password_set(password: String, app: AppHandle, dk: State<'_, Derive
  *      will unlock cipherbox for user if pass the verification
  */
 #[tauri::command]
-pub async fn password_verify(password: String, app: AppHandle, dk: State<'_, DerivedKey>) -> Result<bool, String> {
+pub async fn password_verify(password: String, app: AppHandle, capp: State<'_, App>) -> Result<bool, String> {
     let mut path_to_save = app.path_resolver().app_dir().ok_or("failed to get app dir")?;
     path_to_save.push(CIPHER_MESSAGE_NAME);
     let key = verify_password(password, path_to_save)?;
-    *dk.0.lock().unwrap() = Some(key);
+    *capp.user_key.lock().unwrap() = Some(key);
     Ok(true)
 }
 

@@ -21,21 +21,23 @@ pub struct CBox {
     pub active: u8,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct CBoxObj {
-    id: i32,
-    box_id: i32,
-    provider: i32,
+    pub id: i32,
+    pub box_id: i32,
+    pub provider: i32,
     // encrypted data cid 
-    cid: String,
-    nonce: Vec<u8>,
-    size: u64,
+    pub cid: String,
+    pub nonce: Vec<u8>,
+    pub size: u64,
     // filename
-    name: OsString,
+    pub name: String,
     // relative path
-    path: OsString,
+    pub path: String,
     // path of file in host file system
-    origin_path: OsString,
+    pub origin_path: String,
+    // object type - 0 file | 1 directory
+    pub obj_type: u8,
 }
 
 #[derive(Debug)]
