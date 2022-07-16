@@ -6,7 +6,6 @@ use std::{
 };
 use serde::{Serialize, Deserialize};
 use crate::{
-    db::{DB_FILE_NAME},
     models::{
         CBox, CBoxObj,
     },
@@ -14,7 +13,7 @@ use crate::{
 use rusqlite::{
     Connection, params,
 };
-
+pub static DB_FILE_NAME: &str = "cipherbox.db";
 
 #[derive(Debug, Default)]
 pub struct App {

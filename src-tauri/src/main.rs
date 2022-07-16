@@ -5,14 +5,13 @@
 
 mod cipher;
 mod commands;
-mod db;
 mod models;
 mod mgr;
+mod errors;
 
 use tauri::Manager;
 
 use crate::commands::{
-  backup, encrypt_file, decrypt_file,
   box_create,
 };
 use crate::mgr::{App};
@@ -37,7 +36,7 @@ fn main() {
     })
     .manage(DerivedKey::default())
     .invoke_handler(tauri::generate_handler![
-        backup, encrypt_file, decrypt_file, box_create
+        box_create
     ])
     .run(context)
     .expect("error while running tauri application");
