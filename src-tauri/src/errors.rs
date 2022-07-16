@@ -10,16 +10,10 @@ pub enum Error {
   #[error("Tauri api error: {0}")]
   TauriApi(String),
   #[error("password not match")]
-  BadPassword
-  // #[error("database {0} not opened")]
-  // DatabaseNotOpened(String),
+  BadPassword,
+  #[error("* : {0}")]
+  Other(String)
 }
-
-// impl From<rusqlite::Error> for Error {
-//     fn from(err: rusqlite::Error) -> Error {
-//         Error::Other(err.to_string())
-//     }
-// }
 
 impl Serialize for Error {
   fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
@@ -31,14 +25,9 @@ impl Serialize for Error {
 }
 
 
-// impl From<cid::Error> for Error {
-//     fn from(err: cid::Error) -> Error {
-//         Error::Other(err.to_string())
-//     }
-// }
+impl From<cid::Error> for Error {
+    fn from(err: cid::Error) -> Error {
+        Error::Other(err.to_string())
+    }
+}
 
-// impl From<cid::multihash::Error> for Error {
-//     fn from(err: cid::multihash::Error) -> Error {
-//         Error::ParsingError(err.to_string())
-//     }
-// }
