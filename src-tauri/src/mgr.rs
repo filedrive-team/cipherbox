@@ -14,6 +14,16 @@ use rusqlite::{
     Connection, params,
 };
 pub static DB_FILE_NAME: &str = "cipherbox.db";
+pub static CIPHER_MESSAGE_NAME: &str = "cipher_message";
+
+#[derive(Debug, Default)]
+pub struct AppInfo {
+    // indicate whether user has set password or not
+    pub has_password_set: bool, 
+    // valid session period after password been verified
+    // will expire in a centain time, currently not implemented
+    pub session_expired: bool,
+}
 
 #[derive(Debug, Default)]
 pub struct App {
@@ -41,11 +51,25 @@ impl App {
     pub fn release_user_key(&mut self) {
         *self.user_key.lock().unwrap() = None;
     }
-    pub fn is_key_set(&self) -> bool {
+    pub fn is_user_key_set(&self) -> bool {
         if let None = *self.user_key.lock().unwrap() {
             return false
         }
         true 
+    }
+    pub fn has_set_password(&self) -> bool {
+        // check if the encryted message and nonce exist 
+        match std::fs::metadata(std::path::PathBuf::from(&self.app_dir).join(CIPHER_MESSAGE_NAME)) {
+            Ok(_) => true,
+            Err(_) => false
+        }
+    }
+    pub fn app_info(&self) -> AppInfo {
+        let mut info = AppInfo::default();
+        
+        info.has_password_set = self.has_set_password();
+        info.session_expired = !self.is_user_key_set();
+        info
     }
     pub fn connect_db(&mut self) -> Result<(), Box<dyn std::error::Error>>{
         let mut dbfile = PathBuf::from(self.app_dir.clone());

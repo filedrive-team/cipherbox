@@ -6,12 +6,14 @@ use tauri::{AppHandle, State};
 use crate::{
     cipher::{encrypt_or_decrypt_file, set_password, verify_password},
     models::{CBox},
-    mgr::App,
+    mgr::{
+      App,
+      CIPHER_MESSAGE_NAME,
+      AppInfo,
+    },
     errors::Error,
 };
 
-
-static CIPHER_MESSAGE_NAME: &str = "cipher_message";
 
 pub struct BoxParams {
     name: String, 
@@ -80,6 +82,16 @@ pub async fn password_verify(password: String, app: AppHandle, capp: State<'_, A
     *capp.user_key.lock().unwrap() = Some(key);
     Ok(true)
 }
+
+/*
+ * api - get app info
+ *      
+ */
+#[tauri::command]
+pub async fn app_info(capp: State<'_, App>) -> AppInfo {
+    capp.app_info()
+}
+
 
 
 // #[tauri::command]

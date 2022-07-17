@@ -11,7 +11,6 @@ use crypto::{
     };
 use std::fs::{read, write};
 use std::path::{PathBuf};
-use std::io;
 use std::iter::{repeat};
 use std::sync::{Mutex};
 use rand::{
