@@ -12,6 +12,9 @@ mod errors;
 use tauri::Manager;
 
 use crate::commands::{
+  app_info,
+  password_set,
+  password_verify,
   box_create,
 };
 use crate::mgr::{App};
@@ -36,6 +39,9 @@ fn main() {
     })
     .manage(DerivedKey::default())
     .invoke_handler(tauri::generate_handler![
+        app_info,
+        password_set,
+        password_verify,
         box_create
     ])
     .run(context)

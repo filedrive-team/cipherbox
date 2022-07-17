@@ -16,7 +16,7 @@ use rusqlite::{
 pub static DB_FILE_NAME: &str = "cipherbox.db";
 pub static CIPHER_MESSAGE_NAME: &str = "cipher_message";
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct AppInfo {
     // indicate whether user has set password or not
     pub has_password_set: bool, 

@@ -1,10 +1,7 @@
 #![allow(dead_code)]
-use std::fs;
-use std::path::{PathBuf};
-use std::ffi::{OsString};
 use tauri::{AppHandle, State};
 use crate::{
-    cipher::{encrypt_or_decrypt_file, set_password, verify_password},
+    cipher::{set_password, verify_password},
     models::{CBox},
     mgr::{
       App,
@@ -88,8 +85,8 @@ pub async fn password_verify(password: String, app: AppHandle, capp: State<'_, A
  *      
  */
 #[tauri::command]
-pub async fn app_info(capp: State<'_, App>) -> AppInfo {
-    capp.app_info()
+pub async fn app_info(capp: State<'_, App>) -> Result<AppInfo, Error> {
+    Ok(capp.app_info())
 }
 
 
