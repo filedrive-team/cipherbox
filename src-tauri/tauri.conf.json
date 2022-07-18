@@ -4,7 +4,8 @@
     "beforeBuildCommand": "yarn build",
     "beforeDevCommand": "yarn dev",
     "devPath": "http://localhost:3000",
-    "distDir": "../dist"
+    "distDir": "../dist",
+    "withGlobalTauri": true
   },
   "package": {
     "productName": "cipherbox",
@@ -12,7 +13,14 @@
   },
   "tauri": {
     "allowlist": {
-      "all": true
+      "all": true,
+      "dialog": {
+        "all": true,
+        "open": false,
+        "save": true,
+        "confirm": true,
+        "ask": true
+      }
     },
     "bundle": {
       "active": true,
@@ -53,14 +61,16 @@
     "updater": {
       "active": false
     },
-    "macOSPrivateApi":true,
+    "macOSPrivateApi": true,
     "windows": [
       {
+        "title": "CipherBox",
         "fullscreen": false,
         "height": 600,
         "resizable": true,
-        "title": "CipherBox",
-        "width": 800,
+        "width": 1000,
+        "minWidth": 960,
+        "minHeight": 667,
         "decorations": false,
         "transparent": true
       }
