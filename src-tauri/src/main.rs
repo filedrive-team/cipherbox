@@ -17,6 +17,7 @@ use crate::commands::{
   password_verify,
   box_create,
   box_list,
+  box_set_active,
 };
 use crate::mgr::{App};
 use crate::cipher::{DerivedKey};
@@ -47,7 +48,8 @@ fn main() {
         password_set,
         password_verify,
         box_create,
-        box_list
+        box_list,
+        box_set_active,
     ])
     .run(context)
     .expect("error while running tauri application");
