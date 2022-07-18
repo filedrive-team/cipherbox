@@ -107,7 +107,7 @@ impl App {
         self.kv_cache = Mutex::new(c);
         Ok(())
     }
-    pub fn flush_cache(&mut self) -> Result<(), Error>{
+    pub fn flush_cache(&self) -> Result<(), Error>{
         let mut cache_path = PathBuf::from(&self.app_dir);
         cache_path.push(KV_FIlE_NAME);
 
@@ -116,11 +116,11 @@ impl App {
         write(cache_path, c)?;
         Ok(())
     }
-    pub fn set_active_box(&mut self, box_id: i32) -> Result<(), Error> {
+    pub fn set_active_box(&self, box_id: i32) -> Result<CBox, Error> {
         let b = self.get_cbox_by_id(box_id)?;
         (*self.kv_cache.lock().unwrap()).active_box_id = box_id;
         self.flush_cache()?;
-        Ok(())
+        Ok(b)
     }
     pub fn connect_db(&mut self) -> Result<(), Box<dyn std::error::Error>>{
         let mut dbfile = PathBuf::from(self.app_dir.clone());
@@ -201,6 +201,9 @@ impl App {
                 insert into cbox (name, encrypt_data, provider, access_token, secret) values (?1, ?2, ?3, ?4, ?5)
             "#, params![cbox.name, cbox.encrypt_data, cbox.provider, cbox.access_token, cbox.secret])
             ?;
+            let id = c.last_insert_rowid();
+            cbox.id = id as i32;
+            self.set_active_box(cbox.id)?;
         }
         
         Ok(cbox)

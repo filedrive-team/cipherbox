@@ -13,6 +13,11 @@ use crate::{
     errors::Error,
 };
 
+
+/*
+ * api - box objects list
+ */
+
 /*
  * api - backup directory
  */
@@ -35,9 +40,21 @@ pub async fn box_create(par: CreateCboxParams, app: State<'_, App>) -> Result<Co
       }
     }
 }
+
 /*
- * api - box objects list
+ * api - set active box
  */
+#[tauri::command]
+pub async fn box_set_active(id: i32, app: State<'_, App>) -> Result<CommonRes<CBox>, Error> {
+    match app.set_active_box(id) {
+      Ok(cb) => {
+        Ok(CommonRes::ok(cb))
+      },
+      Err(e) => {
+        Ok(CommonRes::error(e))
+      }
+    }
+}
 
 /*
  * api - box list

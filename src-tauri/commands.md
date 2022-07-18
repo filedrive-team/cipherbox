@@ -90,3 +90,10 @@ Get box list
 let boxList = await invoke('box_list', null);
 
 ```
+
+### box_set_active
+Get box list
+```js
+let activeBox = await invoke('box_set_active', {id: 1});
+
+```
