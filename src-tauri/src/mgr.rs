@@ -7,8 +7,12 @@ use std::{
 use serde::{Serialize, Deserialize};
 use crate::{
     models::{
-        CBox, CBoxObj,
+        CBox, CBoxObj, Provider,
     },
+    cipher::{
+        gen_nonce,
+    },
+    errors::Error,
 };
 use rusqlite::{
     Connection, params,
@@ -17,6 +21,7 @@ pub static DB_FILE_NAME: &str = "cipherbox.db";
 pub static CIPHER_MESSAGE_NAME: &str = "cipher_message";
 
 #[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AppInfo {
     // indicate whether user has set password or not
     pub has_password_set: bool, 
@@ -31,6 +36,7 @@ pub struct App {
     pub user_key: Mutex<Option<[u8;32]>>,
     pub session_start: u64,
     pub app_dir: OsString,
+    pub providers: Vec<Provider>,
 }
 pub fn current() -> Result<u64, SystemTimeError>{
     match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
@@ -43,6 +49,12 @@ impl App {
     pub fn new(app_dir: OsString) -> Self {
         let mut app = App::default();
         app.app_dir = app_dir;
+        app.providers = vec![Provider{
+            id: 1,
+            name: "web3storage".into(),
+            put_api: "{}://api.web3.storage/{}".into(),
+            get_api: "{}://dweb.link/ipfs/{}?{}".into()
+        }];
         app
     }
     // pub fn set_user_key(&mut self, key:[u8;32]) {
@@ -115,7 +127,6 @@ impl App {
                 CREATE TABLE IF NOT EXISTS provider (
                     id    INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT,
-                    access_token TEXT,
                     put_api TEXT,
                     get_api TEXT
                 );
@@ -130,25 +141,47 @@ impl App {
             None => false
         }
     }
-    pub fn create_cbox(&self, par: CreateCboxParams) -> Result<CBox, String> {
+    pub fn create_cbox(&self, par: CreateCboxParams) -> Result<CBox, Error> {
         let mut cbox = CBox::default();
         cbox.name = par.name;
         cbox.encrypt_data = par.encrypt_data;
         cbox.provider = par.provider;
         cbox.access_token = par.access_token;
+        match self.box_secret() {
+            Err(err) => return Err(err),
+            Ok(s) => {
+                cbox.secret = s;
+            }
+        };
         if !self.has_connection() {
-            return Err("no db connection yet".to_owned())
+            return Err(Error::SessionExpired)
         }
         if let Some(c) = &*self.conn.lock().unwrap() {
             c.execute(r#"
-                insert into cbox (name, encrypt_data, provider, access_token) values (?1, ?2, ?3, ?4)
-            "#, params![cbox.name, cbox.encrypt_data, cbox.provider, cbox.access_token])
-            .map_err(|err| format!("failed to create cbox: {}", err))?;
+                insert into cbox (name, encrypt_data, provider, access_token, secret) values (?1, ?2, ?3, ?4, ?5)
+            "#, params![cbox.name, cbox.encrypt_data, cbox.provider, cbox.access_token, cbox.secret])
+            ?;
         }
         
         Ok(cbox)
     }
-    pub fn list_cbox(&self) -> Result<Vec<CBox>, String> {
+    fn box_secret(&self) -> Result<Vec<u8>, Error>{
+        match *self.user_key.lock().unwrap() {
+            Some(uk) => {
+                let mut bs = gen_nonce(32);
+                dbg!(&bs);
+                for (i, v) in bs.iter_mut().enumerate() {
+                    *v = uk[i] ^ *v
+                }
+                dbg!(&bs);
+                Ok(bs)
+            },
+            None => {
+                Err(Error::SessionExpired)
+            }
+        }
+    }
+    pub fn list_cbox(&self) -> Result<Vec<CBox>, Error> {
         if let Some(c) = &*self.conn.lock().unwrap() {
             let mut stmt = c.prepare("SELECT id, name, encrypt_data, provider, access_token FROM cbox").unwrap();
             let box_iter = stmt.query_map([], |row| {
@@ -166,7 +199,7 @@ impl App {
             }
             Ok(list)
         } else {
-            Err("no db connection yet".to_owned())
+            Err(Error::SessionExpired)
         }
     }
     pub fn create_cbox_obj(&self, par: &CBoxObj) -> Result<(), String>{
@@ -209,11 +242,31 @@ impl App {
 
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateCboxParams {
     pub name: String,
     pub encrypt_data: bool,
     pub provider: i32,
     pub access_token: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct CommonRes<T> {
+    pub error: String,
+    pub result: Option<T>,
+}
+
+impl <T> CommonRes<T> {
+    pub fn error(err: Error) -> Self {
+        CommonRes { error: format!("{}", err), result: None }
+    }
+}
+
+impl<T: Serialize> CommonRes<T> {
+    pub fn ok(d: T) -> Self {
+        CommonRes { error: "".into(), result: Some(d) }
+    }
 }
 
 #[cfg(test)]

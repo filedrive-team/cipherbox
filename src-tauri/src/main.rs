@@ -16,6 +16,7 @@ use crate::commands::{
   password_set,
   password_verify,
   box_create,
+  box_list,
 };
 use crate::mgr::{App};
 use crate::cipher::{DerivedKey};
@@ -27,7 +28,7 @@ fn main() {
       let app_dir = app.path_resolver().app_dir().ok_or("failed to get app dir during setup")?;
       let app_dir = app_dir.as_os_str().to_owned();
       let mut cipherboxapp = App::new(app_dir);
-      cipherboxapp.connect_db().expect("failed to open sqlite");
+      cipherboxapp.init_db().expect("failed to open sqlite");
       app.manage(cipherboxapp);
       Ok(())
       
@@ -42,7 +43,8 @@ fn main() {
         app_info,
         password_set,
         password_verify,
-        box_create
+        box_create,
+        box_list
     ])
     .run(context)
     .expect("error while running tauri application");

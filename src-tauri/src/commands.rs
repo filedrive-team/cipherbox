@@ -7,6 +7,8 @@ use crate::{
       App,
       CIPHER_MESSAGE_NAME,
       AppInfo,
+      CreateCboxParams,
+      CommonRes,
     },
     errors::Error,
 };
@@ -28,19 +30,15 @@ pub struct BoxParams {
  * api - create a box for data backup
  */
 #[tauri::command]
-pub async fn box_create(app: State<'_, App>) -> Result<CBox, Error> {
-    let mut b = CBox::default();
-    
-    if app.has_connection() {
-        b.name = String::from("has connection")
-    } else {
-        b.name = String::from("has not connection")
+pub async fn box_create(par: CreateCboxParams, app: State<'_, App>) -> Result<CommonRes<CBox>, Error> {
+    match app.create_cbox(par) {
+      Ok(cb) => {
+        Ok(CommonRes::ok(cb))
+      },
+      Err(e) => {
+        Ok(CommonRes::error(e))
+      }
     }
-    Ok(b)
-    // conn.execute("
-    //     insert into cbox (name, encrypt_data) values (?1, ?2)
-    // ", params![pms.name, pms.encrypt_data])?;
-    // Ok(())
 }
 /*
  * api - box objects list
@@ -49,20 +47,29 @@ pub async fn box_create(app: State<'_, App>) -> Result<CBox, Error> {
 /*
  * api - box list
  */
-
+#[tauri::command]
+pub async fn box_list(app: State<'_, App>) -> Result<Vec<CBox>, Error> {
+    app.list_cbox()
+}
 /*
  * api - create password for cipherbox 
  */
 #[tauri::command]
-pub async fn password_set(password: String, app: AppHandle, capp: State<'_, App>) -> Result<(), Error> {
-    let mut path_to_save = app.path_resolver()
-      .app_dir()
-      .ok_or(Error::TauriApi("failed to get app dir".into()))?;
+pub async fn password_set(password: String, app: AppHandle, capp: State<'_, App>) -> Result<CommonRes<()>, Error> {
+    let mut path_to_save = match app.path_resolver().app_dir() {
+        Some(p) => p,
+        None => {
+          return Ok(CommonRes::error(Error::TauriApi("failed to get app dir".into())))
+        }
+    };
     path_to_save.push(CIPHER_MESSAGE_NAME);
-    let key = set_password(password, path_to_save)?;
+    let key = match set_password(password, path_to_save){
+      Ok(key) => key,
+      Err(e) => return Ok(CommonRes::error(e))
+    };
     
     *capp.user_key.lock().unwrap() = Some(key);
-    Ok(())
+    Ok(CommonRes::ok(()))
 }
 
 /*
@@ -70,14 +77,22 @@ pub async fn password_set(password: String, app: AppHandle, capp: State<'_, App>
  *      will unlock cipherbox for user if pass the verification
  */
 #[tauri::command]
-pub async fn password_verify(password: String, app: AppHandle, capp: State<'_, App>) -> Result<bool, Error> {
-    let mut path_to_save = app.path_resolver()
-      .app_dir()
-      .ok_or(Error::TauriApi("failed to get app dir".into()))?;
+pub async fn password_verify(password: String, app: AppHandle, capp: State<'_, App>) -> Result<CommonRes<bool>, Error> {
+    let mut path_to_save = match app.path_resolver().app_dir() {
+        Some(p) => p,
+        None => {
+          return Ok(CommonRes::error(Error::TauriApi("failed to get app dir".into())))
+        }
+    };
     path_to_save.push(CIPHER_MESSAGE_NAME);
-    let key = verify_password(password, path_to_save)?;
+    let key = match verify_password(password, path_to_save) {
+        Ok(key) => key,
+        Err(e) => {
+          return Ok(CommonRes::error(e))
+        }
+    };
     *capp.user_key.lock().unwrap() = Some(key);
-    Ok(true)
+    Ok(CommonRes::ok(true))
 }
 
 /*
@@ -85,8 +100,8 @@ pub async fn password_verify(password: String, app: AppHandle, capp: State<'_, A
  *      
  */
 #[tauri::command]
-pub async fn app_info(capp: State<'_, App>) -> Result<AppInfo, Error> {
-    Ok(capp.app_info())
+pub async fn app_info(capp: State<'_, App>) -> Result<CommonRes<AppInfo>, Error> {
+    Ok(CommonRes::ok(capp.app_info()))
 }
 
 

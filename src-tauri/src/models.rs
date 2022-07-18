@@ -1,6 +1,7 @@
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CBox {
     pub id: i32,
     pub name: String,
@@ -11,6 +12,7 @@ pub struct CBox {
     // total size of objects in the box
     pub size_total: u64,
     // the key use to do encrypt works
+    #[serde(skip_deserializing)]
     pub secret: Vec<u8>,
     // the storage provider, like web3.storage
     pub provider: i32,
@@ -21,12 +23,14 @@ pub struct CBox {
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CBoxObj {
     pub id: i32,
     pub box_id: i32,
     pub provider: i32,
     // encrypted data cid 
     pub cid: String,
+    #[serde(skip_deserializing)]
     pub nonce: Vec<u8>,
     pub size: u64,
     // filename
@@ -47,9 +51,8 @@ pub struct Identity {
 
 #[derive(Debug)]
 pub struct Provider {
-    id: i32,
-    name: String,
-    access_token: String,
-    put_api: String,
-    get_api: String,
+    pub id: i32,
+    pub name: String,
+    pub put_api: String,
+    pub get_api: String,
 }

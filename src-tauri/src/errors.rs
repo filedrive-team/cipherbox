@@ -11,6 +11,8 @@ pub enum Error {
   TauriApi(String),
   #[error("password not match")]
   BadPassword,
+  #[error("session expired")]
+  SessionExpired,
   #[error("* : {0}")]
   Other(String)
 }
