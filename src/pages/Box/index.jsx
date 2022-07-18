@@ -73,35 +73,63 @@ const data = [
 const Box = () => {
   const [menu, setMenu] = useState();
 
-  useEffect(() => {
-    async function f() {
-      /**
-       *
-       * @type {[{name:string,accessToken:string,id:number,provider:number}]}
-       */
-      const boxList = await invoke('box_list');
+  async function f() {
+    /**
+     *
+     * @type {[{name:string,accessToken:string,id:number,provider:number}]}
+     */
+    const boxList = (await invoke('box_list')).result;
 
-      let boxItem = boxList?.map((value, index) => {
-        return {
-          key: index + 1,
-          label: (
-            <div
-              className={'dropButton'}
-              style={{
-                '--color': index === 1 ? color3453F4 : color435179,
-              }}
-            >
-              {value.name}
-            </div>
-          ),
-        };
+    /**
+     *
+     * @type {{activeBox:{name:string,accessToken:string,id:number,provider:number},hasPasswordSet:boolean,sessionExpired:boolean}}
+     */
+    const appInfo = (await invoke('app_info')).result;
+
+    let boxItem = boxList?.map((value, index) => {
+      return {
+        key: index + 1,
+        label: (
+          <div
+            onClick={async () => {
+              await invoke('box_set_active', {
+                id: value.id,
+              });
+              f();
+            }}
+            className={'dropButton'}
+            style={{
+              '--color':
+                value.id === appInfo.activeBox.id ? color3453F4 : color435179,
+            }}
+          >
+            {value.name}
+          </div>
+        ),
+      };
+    });
+
+    if (boxItem !== undefined) {
+      boxItem.unshift({
+        key: 0,
+        label: (
+          <div
+            className={'dropButton'}
+            onClick={() => {
+              history.push(RouterPath.create);
+            }}
+          >
+            创建盒子
+          </div>
+        ),
       });
-
-      if (boxItem !== undefined) {
-        boxItem.unshift({
+    } else {
+      boxItem = [
+        {
           key: 0,
           label: (
             <div
+              className={'dropButton'}
               onClick={() => {
                 history.push(RouterPath.create);
               }}
@@ -109,26 +137,13 @@ const Box = () => {
               创建盒子
             </div>
           ),
-        });
-      } else {
-        boxItem = [
-          {
-            key: 0,
-            label: (
-              <div
-                onClick={() => {
-                  history.push(RouterPath.create);
-                }}
-              >
-                创建盒子
-              </div>
-            ),
-          },
-        ];
-      }
-      setMenu(<Menu items={boxItem} />);
+        },
+      ];
     }
+    setMenu(<Menu items={boxItem} />);
+  }
 
+  useEffect(() => {
     f();
   }, []);
 
