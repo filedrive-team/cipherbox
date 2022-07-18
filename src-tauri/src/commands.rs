@@ -13,11 +13,6 @@ use crate::{
     errors::Error,
 };
 
-
-pub struct BoxParams {
-    name: String, 
-    encrypt_data: bool,
-}
 /*
  * api - backup directory
  */
@@ -48,8 +43,15 @@ pub async fn box_create(par: CreateCboxParams, app: State<'_, App>) -> Result<Co
  * api - box list
  */
 #[tauri::command]
-pub async fn box_list(app: State<'_, App>) -> Result<Vec<CBox>, Error> {
-    app.list_cbox()
+pub async fn box_list(app: State<'_, App>) -> Result<CommonRes<Vec<CBox>>, Error> {
+    match app.list_cbox() {
+      Ok(list) => {
+        Ok(CommonRes::ok(list))
+      },
+      Err(e) => {
+        Ok(CommonRes::error(e))
+      }
+    }
 }
 /*
  * api - create password for cipherbox 

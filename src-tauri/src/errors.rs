@@ -7,6 +7,8 @@ pub enum Error {
   Io(#[from] std::io::Error),
   #[error("Sqlite error: {0}")]
   Sqlite(#[from] rusqlite::Error),
+  #[error("convert error: {0}")]
+  Convert(#[from] std::str::Utf8Error),
   #[error("Tauri api error: {0}")]
   TauriApi(String),
   #[error("password not match")]
@@ -31,5 +33,17 @@ impl From<cid::Error> for Error {
     fn from(err: cid::Error) -> Error {
         Error::Other(err.to_string())
     }
+}
+
+impl From<toml::ser::Error> for Error {
+  fn from(err: toml::ser::Error) -> Error {
+      Error::Other(err.to_string())
+  }
+}
+
+impl From<toml::de::Error> for Error {
+  fn from(err: toml::de::Error) -> Error {
+      Error::Other(err.to_string())
+  }
 }
 

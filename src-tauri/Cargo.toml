@@ -33,6 +33,7 @@ fvm_ipld_blockstore = "0.1.1"
 reqwest = { version = "^0.11", features = ["blocking", "json"] }
 http = "0.2.8"
 tiny_http = "0.11.0"
+toml = "0.5.9"
 
 [features]
 # by default Tauri runs in production mode

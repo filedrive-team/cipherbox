@@ -3,6 +3,7 @@ use std::{
     path::{PathBuf},
     sync::{Mutex},
     ffi::{OsString},
+    fs::{read,write},
 };
 use serde::{Serialize, Deserialize};
 use crate::{
@@ -19,6 +20,7 @@ use rusqlite::{
 };
 pub static DB_FILE_NAME: &str = "cipherbox.db";
 pub static CIPHER_MESSAGE_NAME: &str = "cipher_message";
+pub static KV_FIlE_NAME: &str = "cipherbox.kv.toml";
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -28,6 +30,13 @@ pub struct AppInfo {
     // valid session period after password been verified
     // will expire in a centain time, currently not implemented
     pub session_expired: bool,
+    // active cbox
+    pub active_box: Option<CBox>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct KVCache {
+    pub active_box_id: i32
 }
 
 #[derive(Debug, Default)]
@@ -37,6 +46,7 @@ pub struct App {
     pub session_start: u64,
     pub app_dir: OsString,
     pub providers: Vec<Provider>,
+    pub kv_cache: Mutex<KVCache>,
 }
 pub fn current() -> Result<u64, SystemTimeError>{
     match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
@@ -57,9 +67,9 @@ impl App {
         }];
         app
     }
-    // pub fn set_user_key(&mut self, key:[u8;32]) {
-    //     *self.user_key.lock().unwrap() = Some(key);
-    // }
+    pub(crate) fn set_user_key(&mut self, key:[u8;32]) {
+         *self.user_key.lock().unwrap() = Some(key);
+    }
     pub fn release_user_key(&mut self) {
         *self.user_key.lock().unwrap() = None;
     }
@@ -81,7 +91,36 @@ impl App {
         
         info.has_password_set = self.has_set_password();
         info.session_expired = !self.is_user_key_set();
+        let active_box_id = (*self.kv_cache.lock().unwrap()).active_box_id;
+        if active_box_id > 0 {
+            if let Ok(b) = self.get_cbox_by_id(active_box_id) {
+                info.active_box = Some(b);
+            }
+        }
         info
+    }
+    pub fn read_cache(&mut self) -> Result<(), Error>{
+        let mut cache_path = PathBuf::from(&self.app_dir);
+        cache_path.push(KV_FIlE_NAME);
+        let d = read(cache_path)?;
+        let c: KVCache = toml::from_slice(&d)?;
+        self.kv_cache = Mutex::new(c);
+        Ok(())
+    }
+    pub fn flush_cache(&mut self) -> Result<(), Error>{
+        let mut cache_path = PathBuf::from(&self.app_dir);
+        cache_path.push(KV_FIlE_NAME);
+
+        let c = toml::to_string(&*self.kv_cache.lock().unwrap())?;
+        
+        write(cache_path, c)?;
+        Ok(())
+    }
+    pub fn set_active_box(&mut self, box_id: i32) -> Result<(), Error> {
+        let b = self.get_cbox_by_id(box_id)?;
+        (*self.kv_cache.lock().unwrap()).active_box_id = box_id;
+        self.flush_cache()?;
+        Ok(())
     }
     pub fn connect_db(&mut self) -> Result<(), Box<dyn std::error::Error>>{
         let mut dbfile = PathBuf::from(self.app_dir.clone());
@@ -109,6 +148,7 @@ impl App {
                     access_token TEXT NOT NULL,
                     active INTEGER DEFAULT 0
                 );
+                CREATE UNIQUE INDEX IF NOT EXISTS index_cbox_name ON cbox (name);
                 CREATE TABLE IF NOT EXISTS cbox_obj (
                     id    INTEGER PRIMARY KEY AUTOINCREMENT,
                     box_id INTEGER,
@@ -202,6 +242,23 @@ impl App {
             Err(Error::SessionExpired)
         }
     }
+    pub fn get_cbox_by_id(&self, box_id: i32) -> Result<CBox, Error> {
+        if let Some(c) = &*self.conn.lock().unwrap() {
+            let b = c.query_row("SELECT id, name, encrypt_data, provider, access_token FROM cbox where id = ?1", params![box_id], |row| {
+                let mut b = CBox::default();
+                b.id = row.get(0)?;
+                b.name = row.get(1)?;
+                b.encrypt_data = row.get(2)?;
+                b.provider = row.get(3)?;
+                b.access_token = row.get(4)?;
+                Ok(b)
+            }).unwrap();
+            
+            Ok(b)
+        } else {
+            Err(Error::SessionExpired)
+        }
+    }
     pub fn create_cbox_obj(&self, par: &CBoxObj) -> Result<(), String>{
         if !self.has_connection() {
             return Err("no db connection yet".to_owned())
@@ -273,6 +330,14 @@ impl<T: Serialize> CommonRes<T> {
 mod test {
     use super::*;
     
+    fn test_user_key() -> [u8;32] {
+        let mut uk = [0u8;32];
+        let rng = gen_nonce(32);
+        for (i, d) in uk.iter_mut().enumerate() {
+            *d = rng[i]
+        }
+        uk
+    }
     #[test]
     fn test_data_flow () {
         // get sys temp dir
@@ -281,13 +346,15 @@ mod test {
         let mut app = App::new(temp_dir.as_os_str().to_owned());
         // init db
         app.init_db().expect("failed to init sqlite");
+        app.set_user_key(test_user_key());
+
         // create a Cbox
         let cbpa01: CreateCboxParams = serde_json::from_str(r#"
             {
                 "name": "cbox_x_00001",
-                "encrypt_data": true,
+                "encryptData": true,
                 "provider": 1,
-                "access_token": "token:for:web3.storage"
+                "accessToken": "token:for:web3.storage"
             }
         "#).expect("failed tp do json deserialize");
         let new_box01 = app.create_cbox(cbpa01).expect("failed to create cbox");
@@ -296,9 +363,9 @@ mod test {
         let cbpa02: CreateCboxParams = serde_json::from_str(r#"
             {
                 "name": "cbox_x_00002",
-                "encrypt_data": false,
+                "encryptData": false,
                 "provider": 1,
-                "access_token": "token:for:nft.storage"
+                "accessToken": "token:for:nft.storage"
             }
         "#).expect("failed to do json deserialize");
         let new_box02 = app.create_cbox(cbpa02).expect("failed to create cbox");

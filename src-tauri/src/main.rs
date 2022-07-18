@@ -29,6 +29,9 @@ fn main() {
       let app_dir = app_dir.as_os_str().to_owned();
       let mut cipherboxapp = App::new(app_dir);
       cipherboxapp.init_db().expect("failed to open sqlite");
+      if let Err(e) = cipherboxapp.read_cache() {
+        dbg!(e);
+      }
       app.manage(cipherboxapp);
       Ok(())
       
