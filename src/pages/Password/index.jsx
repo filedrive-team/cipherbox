@@ -1,14 +1,40 @@
 import BgGradient from '@/assets/password/bg_gradient.png';
 import codeIcon from '@/assets/password/code.png';
 import styles from './index.module.scss';
-import { Input } from 'antd';
+import { Input, notification } from 'antd';
 import { useHistory } from 'react-router';
 import { RouterPath } from '@/router';
+import { invoke } from '@tauri-apps/api';
+import { useState } from 'react';
 
 const Password = () => {
   const history = useHistory();
-  const onConfirm = () => {
-    history.push(RouterPath.create);
+  const [password, setPassword] = useState('');
+  const onConfirm = async () => {
+    /**
+     *
+     * @type {{result:{hasPasswordSet:boolean,}}}
+     */
+    const appInfo = await invoke('app_info');
+    if (appInfo.result.hasPasswordSet === true) {
+      const password_verify = await invoke('password_verify', {
+        password: password,
+      });
+
+      console.log('password_verify===', password_verify, password);
+      if (!password_verify.result) {
+        notification.open({
+          description: '密码不正确,请重新输入',
+          duration: 2,
+        });
+        setPassword('');
+        return;
+      }
+      history.push(RouterPath.box);
+    } else {
+      const password_set = invoke('password_set', { password: password });
+      history.push(RouterPath.create);
+    }
   };
   return (
     <div className={styles.passwordWrap}>
@@ -33,7 +59,14 @@ const Password = () => {
             </div>
           </div>
           <div className={styles.bottom}>
-            <Input type={'password'} placeholder={'输入密钥'} />
+            <Input
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+              }}
+              type={'password'}
+              placeholder={'输入密钥'}
+            />
             <div onClick={onConfirm} className={styles.confirm}>
               确认
             </div>

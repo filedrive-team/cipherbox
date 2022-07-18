@@ -5,23 +5,20 @@ class StoragesKey {
 class Storage {
   /**
    *
-   * @param  {{type:number,key:string,id:number}}value
+   * @param value
    */
   static setBox(value) {
-    let boxes = this.getBoxes();
-    if (boxes !== null) {
-      boxes.push(value);
-      localStorage.setItem(StoragesKey.BoxKey, JSON.stringify(boxes));
-    } else {
-      localStorage.setItem(StoragesKey.BoxKey, JSON.stringify([value]));
-    }
+    localStorage.setItem(
+      StoragesKey.BoxKey,
+      value !== null ? JSON.stringify(value) : null,
+    );
   }
 
   /**
    *
-   * @returns {undefined|[{type:number,key:string,id:number}]}
+   * @returns {null|any}
    */
-  static getBoxes() {
+  static getBox() {
     return localStorage.getItem(StoragesKey.BoxKey) === null
       ? null
       : JSON.parse(localStorage.getItem(StoragesKey.BoxKey));

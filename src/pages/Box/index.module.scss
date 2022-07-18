@@ -40,6 +40,13 @@
   }
 }
 
+:global {
+  .dropButton {
+    font-size: 12px;
+    color: var(--color);
+  }
+}
+
 .tabWrap {
   display: flex;
   padding: 22px 24px;
@@ -73,6 +80,7 @@
     }
   }
 }
+
 
 .listWrap {
   :global {

@@ -4,16 +4,18 @@ import styles from './index.module.scss';
 import classNames from 'classnames';
 import { Dropdown, Input, Menu, Table } from 'antd';
 import { ReactComponent as SearchIcon } from '@/assets/home/search.svg';
-import Storage from '@/data/storage';
-
 import {
   copyIcon,
   copyButton,
   switchIcon,
   switchButton,
+  color435179,
+  color3453F4,
 } from '@/styles/home.module.scss';
 import { useHistory } from 'react-router';
 import { RouterPath } from '@/router';
+import { invoke } from '@tauri-apps/api';
+import { useEffect, useState } from 'react';
 
 const tabData = [
   {
@@ -69,47 +71,68 @@ const data = [
 ];
 
 const Box = () => {
+  const [menu, setMenu] = useState();
+
+  useEffect(() => {
+    async function f() {
+      /**
+       *
+       * @type {[{name:string,accessToken:string,id:number,provider:number}]}
+       */
+      const boxList = await invoke('box_list');
+
+      let boxItem = boxList?.map((value, index) => {
+        return {
+          key: index + 1,
+          label: (
+            <div
+              className={'dropButton'}
+              style={{
+                '--color': index === 1 ? color3453F4 : color435179,
+              }}
+            >
+              {value.name}
+            </div>
+          ),
+        };
+      });
+
+      if (boxItem !== undefined) {
+        boxItem.unshift({
+          key: 0,
+          label: (
+            <div
+              onClick={() => {
+                history.push(RouterPath.create);
+              }}
+            >
+              创建盒子
+            </div>
+          ),
+        });
+      } else {
+        boxItem = [
+          {
+            key: 0,
+            label: (
+              <div
+                onClick={() => {
+                  history.push(RouterPath.create);
+                }}
+              >
+                创建盒子
+              </div>
+            ),
+          },
+        ];
+      }
+      setMenu(<Menu items={boxItem} />);
+    }
+
+    f();
+  }, []);
+
   const history = useHistory();
-
-  const boxes = Storage.getBoxes();
-  let boxItem = boxes?.map((value, index) => {
-    return {
-      key: index + 1,
-      label: <div>{value.key}</div>,
-    };
-  });
-
-  if (boxItem !== undefined) {
-    boxItem.unshift({
-      key: 0,
-      label: (
-        <div
-          onClick={() => {
-            history.push(RouterPath.create);
-          }}
-        >
-          创建盒子
-        </div>
-      ),
-    });
-  } else {
-    boxItem = [
-      {
-        key: 0,
-        label: (
-          <div
-            onClick={() => {
-              history.push(RouterPath.create);
-            }}
-          >
-            创建盒子
-          </div>
-        ),
-      },
-    ];
-  }
-
-  const menu = <Menu items={boxItem} />;
 
   return (
     <div className={styles.homeWrap} onClick={() => {}}>
@@ -129,7 +152,13 @@ const Box = () => {
         <div className={styles.tabWrap}>
           {tabData.map((value, index) => {
             return index !== 0 ? (
-              <Dropdown key={index} overlay={menu} arrow placement="bottom">
+              <Dropdown
+                trigger={'click'}
+                key={index}
+                overlay={menu}
+                arrow
+                placement="bottom"
+              >
                 <div
                   className={styles.tabItem}
                   style={{ '--bg': value.bg, '--prefix': value.icon }}

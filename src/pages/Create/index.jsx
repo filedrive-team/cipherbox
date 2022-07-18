@@ -2,48 +2,48 @@ import styles from './index.module.scss';
 import BgGradient from '@/assets/password/bg_gradient.png';
 import FileIcon from '@/assets/create/file.svg';
 import CloseIcon from '@/assets/close.svg';
-import { Input, Modal, Radio } from 'antd';
+import { Input, Modal, notification, Radio } from 'antd';
 import { useState } from 'react';
 import { useHistory } from 'react-router';
-import Storage from '@/data/storage';
 import { RouterPath } from '@/router';
-import { confirm } from '@tauri-apps/api/dialog';
+import { invoke } from '@tauri-apps/api';
 
 const Create = () => {
   const history = useHistory();
   const [visible, setVisible] = useState(false);
   const [type, setType] = useState(0);
   const [key, setKey] = useState('');
-  const onCreate = async () => {
-    let values = Storage.getBoxes();
-    console.log(values);
+  const [name, setName] = useState('');
 
-    if (values !== null) {
-      let keys = values?.map((value) => value.key);
-      console.log(keys, key);
-      if (keys.indexOf(key) !== -1) {
-        const confirmed = await confirm('是否创建一个已存在的盒子?', {
-          type: 'warning',
+  const onCreate = async () => {
+    /**
+     *
+     * @type {[]}
+     */
+    const boxList = await invoke('box_list');
+    if (boxList !== null) {
+      const names = boxList.map((value, index) => value.name);
+      if (names.indexOf(name) !== -1) {
+        notification.open({
+          duration: 3,
+          message: '盒子已存在!',
+          maxCount: 1,
         });
-        if (confirmed) {
-          Storage.setBox({
-            type: type,
-            key: key,
-            id: Date.now(),
-          });
-          setVisible(false);
-          history.push(RouterPath.box);
-        }
         return;
       }
-      Storage.setBox({
-        type: type,
-        key: key,
-        id: Date.now(),
-      });
-      setVisible(false);
-      history.push(RouterPath.box);
     }
+
+    const params = {
+      name: name,
+      encryptData: type === 0 ? true : false,
+      provider: 1,
+      accessToken: key,
+    };
+
+    let value = await invoke('box_create', { par: params });
+    console.log('==========box_create=====', value);
+    setVisible(false);
+    history.replace(RouterPath.box);
   };
   return (
     <div className={styles.createWrap}>
@@ -80,6 +80,7 @@ const Create = () => {
                 setVisible(false);
               }}
               src={CloseIcon}
+              alt={''}
             />
           </div>
           <div className={'content'}>
@@ -102,12 +103,20 @@ const Create = () => {
               <Radio.Group defaultValue={1}>
                 <Radio value={1}>Web3.storage</Radio>
               </Radio.Group>
-            </div>
-            <div>
-              <div className={'title'}>文件名</div>
               <Input
+                type={'password'}
+                placeholder={'输入token'}
                 onChange={(e) => {
                   setKey(e.target.value);
+                }}
+              />
+            </div>
+            <div>
+              <div className={'title'}>Box 名称</div>
+              <Input
+                placeholder={'输入名称'}
+                onChange={(e) => {
+                  setName(e.target.value);
                 }}
               />
             </div>
