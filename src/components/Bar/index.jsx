@@ -13,7 +13,7 @@ import { barClose, barHide, barMax, barMin } from '@/styles/bar.module.scss';
 const data = [
   {
     callback: async () => {
-      await appWindow.unmaximize();
+      await appWindow.close();
     },
     color: colorFF6056,
     max: barClose,
