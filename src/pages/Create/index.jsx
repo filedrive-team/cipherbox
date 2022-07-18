@@ -20,17 +20,15 @@ const Create = () => {
      *
      * @type {[]}
      */
-    const boxList = await invoke('box_list');
-    if (boxList !== null) {
-      const names = boxList.map((value, index) => value.name);
-      if (names.indexOf(name) !== -1) {
-        notification.open({
-          duration: 3,
-          message: '盒子已存在!',
-          maxCount: 1,
-        });
-        return;
-      }
+    const boxList = (await invoke('box_list')).result;
+    const names = boxList.map((value, index) => value.name);
+    if (names.indexOf(name) !== -1) {
+      notification.open({
+        duration: 3,
+        message: '盒子已存在!',
+        maxCount: 1,
+      });
+      return;
     }
 
     const params = {
@@ -40,8 +38,7 @@ const Create = () => {
       accessToken: key,
     };
 
-    let value = await invoke('box_create', { par: params });
-    console.log('==========box_create=====', value);
+    await invoke('box_create', { par: params });
     setVisible(false);
     history.replace(RouterPath.box);
   };

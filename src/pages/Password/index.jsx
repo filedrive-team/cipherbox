@@ -13,15 +13,17 @@ const Password = () => {
   const onConfirm = async () => {
     /**
      *
-     * @type {{result:{hasPasswordSet:boolean,}}}
+     * @type {{result:{hasPasswordSet:boolean,activeBox:any}}}
      */
     const appInfo = await invoke('app_info');
+
+    console.log('====', appInfo);
+
     if (appInfo.result.hasPasswordSet === true) {
       const password_verify = await invoke('password_verify', {
         password: password,
       });
 
-      console.log('password_verify===', password_verify, password);
       if (!password_verify.result) {
         notification.open({
           description: '密码不正确,请重新输入',
@@ -30,10 +32,14 @@ const Password = () => {
         setPassword('');
         return;
       }
-      history.push(RouterPath.box);
+      if (appInfo.result.activeBox !== null) {
+        history.push(RouterPath.box);
+      } else {
+        history.push(RouterPath.create);
+      }
     } else {
       const password_set = invoke('password_set', { password: password });
-      history.push(RouterPath.create);
+      // history.push(RouterPath.create);
     }
   };
   return (

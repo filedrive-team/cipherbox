@@ -9,7 +9,7 @@ import 'antd/dist/antd.min.css';
 function App() {
   useEffect(() => {
     document.addEventListener('contextmenu', async (e) => {
-      e.preventDefault();
+      // e.preventDefault();
     });
   }, []);
 
