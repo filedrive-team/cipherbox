@@ -118,7 +118,9 @@ impl App {
     }
     pub fn set_active_box(&self, box_id: i32) -> Result<CBox, Error> {
         let b = self.get_cbox_by_id(box_id)?;
-        (*self.kv_cache.lock().unwrap()).active_box_id = box_id;
+        let mut mg = self.kv_cache.lock().unwrap();
+        (*mg).active_box_id = box_id;
+        drop(mg);
         self.flush_cache()?;
         Ok(b)
     }
@@ -196,13 +198,15 @@ impl App {
         if !self.has_connection() {
             return Err(Error::SessionExpired)
         }
-        if let Some(c) = &*self.conn.lock().unwrap() {
+        let mg = self.conn.lock().unwrap();
+        if let Some(c) = &*mg {
             c.execute(r#"
                 insert into cbox (name, encrypt_data, provider, access_token, secret) values (?1, ?2, ?3, ?4, ?5)
             "#, params![cbox.name, cbox.encrypt_data, cbox.provider, cbox.access_token, cbox.secret])
             ?;
             let id = c.last_insert_rowid();
             cbox.id = id as i32;
+            drop(mg);
             self.set_active_box(cbox.id)?;
         }
         
