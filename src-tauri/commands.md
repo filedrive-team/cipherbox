@@ -24,11 +24,15 @@ pub struct AppInfo {
 ### password_set
 Set user password
 ```js
+import { invoke } from '@tauri-apps/api'
+
 await invoke('password_set', {password: 'main_password_for_cipherbox'})
 ```
 
 ### password_verify
 Verify user password
 ```js
+import { invoke } from '@tauri-apps/api'
+
 await invoke('password_verify', {password: 'main_password_for_cipherbox'})
 ```
