@@ -10,6 +10,9 @@ impl App {
         Ok(b)
     }
     pub fn create_cbox(&self, par: CreateCboxParams) -> Result<CBox, Error> {
+        if !self.has_connection() {
+            return Err(Error::SessionExpired);
+        }
         let mut cbox = CBox::default();
         cbox.name = par.name;
         cbox.encrypt_data = par.encrypt_data;
@@ -21,24 +24,22 @@ impl App {
                 cbox.secret = s;
             }
         };
-        if !self.has_connection() {
-            return Err(Error::SessionExpired)
-        }
+        cbox.create_at = current()?;
+        cbox.modify_at = cbox.create_at;
         let mg = self.conn.lock().unwrap();
         if let Some(c) = &*mg {
             c.execute(r#"
-                insert into cbox (name, encrypt_data, provider, access_token, secret) values (?1, ?2, ?3, ?4, ?5)
-            "#, params![cbox.name, cbox.encrypt_data, cbox.provider, cbox.access_token, cbox.secret])
-            ?;
+                insert into cbox (name, encrypt_data, provider, access_token, secret, create_at, modify_at) values (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+            "#, params![cbox.name, cbox.encrypt_data, cbox.provider, cbox.access_token, cbox.secret, cbox.create_at, cbox.modify_at])?;
             let id = c.last_insert_rowid();
             cbox.id = id as i32;
             drop(mg);
             self.set_active_box(cbox.id)?;
         }
-        
+
         Ok(cbox)
     }
-    fn box_secret(&self) -> Result<Vec<u8>, Error>{
+    fn box_secret(&self) -> Result<Vec<u8>, Error> {
         match *self.user_key.lock().unwrap() {
             Some(uk) => {
                 let mut bs = gen_nonce(32);
@@ -48,24 +49,26 @@ impl App {
                 }
                 dbg!(&bs);
                 Ok(bs)
-            },
-            None => {
-                Err(Error::SessionExpired)
             }
+            None => Err(Error::SessionExpired),
         }
     }
     pub fn list_cbox(&self) -> Result<Vec<CBox>, Error> {
         if let Some(c) = &*self.conn.lock().unwrap() {
-            let mut stmt = c.prepare("SELECT id, name, encrypt_data, provider, access_token FROM cbox").unwrap();
-            let box_iter = stmt.query_map([], |row| {
-                let mut b = CBox::default();
-                b.id = row.get(0)?;
-                b.name = row.get(1)?;
-                b.encrypt_data = row.get(2)?;
-                b.provider = row.get(3)?;
-                b.access_token = row.get(4)?;
-                Ok(b)
-            }).unwrap();
+            let mut stmt = c
+                .prepare("SELECT id, name, encrypt_data, provider, access_token FROM cbox")
+                .unwrap();
+            let box_iter = stmt
+                .query_map([], |row| {
+                    let mut b = CBox::default();
+                    b.id = row.get(0)?;
+                    b.name = row.get(1)?;
+                    b.encrypt_data = row.get(2)?;
+                    b.provider = row.get(3)?;
+                    b.access_token = row.get(4)?;
+                    Ok(b)
+                })
+                .unwrap();
             let mut list: Vec<CBox> = Vec::new();
             for b in box_iter {
                 list.push(b.unwrap())
@@ -77,16 +80,22 @@ impl App {
     }
     pub fn get_cbox_by_id(&self, box_id: i32) -> Result<CBox, Error> {
         if let Some(c) = &*self.conn.lock().unwrap() {
-            let b = c.query_row("SELECT id, name, encrypt_data, provider, access_token FROM cbox where id = ?1", params![box_id], |row| {
-                let mut b = CBox::default();
-                b.id = row.get(0)?;
-                b.name = row.get(1)?;
-                b.encrypt_data = row.get(2)?;
-                b.provider = row.get(3)?;
-                b.access_token = row.get(4)?;
-                Ok(b)
-            }).unwrap();
-            
+            let b = c
+                .query_row(
+                    "SELECT id, name, encrypt_data, provider, access_token FROM cbox where id = ?1",
+                    params![box_id],
+                    |row| {
+                        let mut b = CBox::default();
+                        b.id = row.get(0)?;
+                        b.name = row.get(1)?;
+                        b.encrypt_data = row.get(2)?;
+                        b.provider = row.get(3)?;
+                        b.access_token = row.get(4)?;
+                        Ok(b)
+                    },
+                )
+                .unwrap();
+
             Ok(b)
         } else {
             Err(Error::SessionExpired)

@@ -1,19 +1,19 @@
 use super::*;
 
 impl App {
-    pub fn connect_db(&mut self) -> Result<(), Box<dyn std::error::Error>>{
+    pub fn connect_db(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let mut dbfile = PathBuf::from(self.app_dir.clone());
         dbfile.push(DB_FILE_NAME);
         let conn = Connection::open(dbfile)?;
         *self.conn.lock().unwrap() = Some(conn);
         Ok(())
     }
-    pub fn init_db(&mut self) -> Result<(), Box<dyn std::error::Error>>{
+    pub fn init_db(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let mut dbfile = PathBuf::from(self.app_dir.clone());
         dbfile.push(DB_FILE_NAME);
         dbg!(dbfile.as_os_str());
         let conn = Connection::open(dbfile)?;
-        
+
         conn.execute_batch(
             r#"BEGIN;
                 CREATE TABLE IF NOT EXISTS cbox (
@@ -25,7 +25,9 @@ impl App {
                     secret BLOB,
                     provider  INTEGER,
                     access_token TEXT NOT NULL,
-                    active INTEGER DEFAULT 0
+                    active INTEGER DEFAULT 0,
+                    create_at INTEGER,
+                    modify_at INTEGER
                 );
                 CREATE UNIQUE INDEX IF NOT EXISTS index_cbox_name ON cbox (name);
                 CREATE TABLE IF NOT EXISTS cbox_obj (
@@ -37,7 +39,9 @@ impl App {
                     size INTEGER,
                     name TEXT,
                     path TEXT,
-                    obj_type INTEGER
+                    obj_type INTEGER,
+                    create_at INTEGER,
+                    modify_at INTEGER
                 );
                 CREATE TABLE IF NOT EXISTS identity (
                     id    INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,15 +53,15 @@ impl App {
                     put_api TEXT,
                     get_api TEXT
                 );
-                COMMIT;"#, 
-            )?;
+                COMMIT;"#,
+        )?;
         *self.conn.lock().unwrap() = Some(conn);
         Ok(())
     }
     pub fn has_connection(&self) -> bool {
         match *self.conn.lock().unwrap() {
             Some(_) => true,
-            None => false
+            None => false,
         }
     }
 }
