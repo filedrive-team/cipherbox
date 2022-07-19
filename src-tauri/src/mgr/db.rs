@@ -33,12 +33,14 @@ impl App {
                 CREATE TABLE IF NOT EXISTS cbox_obj (
                     id    INTEGER PRIMARY KEY AUTOINCREMENT,
                     box_id INTEGER,
-                    provider  INTEGER,
                     cid TEXT,
+                    hash TEXT,
                     nonce BLOB,
                     size INTEGER,
                     name TEXT,
                     path TEXT,
+                    origin_path TEXT,
+                    status INTEGER,
                     obj_type INTEGER,
                     create_at INTEGER,
                     modify_at INTEGER

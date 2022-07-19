@@ -1,43 +1,35 @@
+use crate::{cipher::gen_nonce, errors::Error};
+use rusqlite::{params, Connection};
 use std::{
-    path::{PathBuf},
-    sync::{Mutex},
-    ffi::{OsString},
-    fs::{read,write},
-};
-use crate::{
-    cipher::{
-        gen_nonce,
-    },
-    errors::Error,
-};
-use rusqlite::{
-    Connection, params,
+    ffi::OsString,
+    fs::{read, write},
+    path::PathBuf,
+    sync::Mutex,
 };
 
-mod typs;
-mod userkey;
 mod cbox;
 mod cboxobj;
 mod db;
+mod typs;
+mod userkey;
 pub use typs::*;
 //pub use userkey::*;
-
 
 impl App {
     pub fn new(app_dir: OsString) -> Self {
         let mut app = App::default();
         app.app_dir = app_dir;
-        app.providers = vec![Provider{
+        app.providers = vec![Provider {
             id: 1,
             name: "web3storage".into(),
             put_api: "{}://api.web3.storage/{}".into(),
-            get_api: "{}://dweb.link/ipfs/{}?{}".into()
+            get_api: "{}://dweb.link/ipfs/{}?{}".into(),
         }];
         app
     }
     pub fn app_info(&self) -> AppInfo {
         let mut info = AppInfo::default();
-        
+
         info.has_password_set = self.has_set_password();
         info.session_expired = !self.is_user_key_set();
         let active_box_id = (*self.kv_cache.lock().unwrap()).active_box_id;
@@ -48,7 +40,7 @@ impl App {
         }
         info
     }
-    pub fn read_cache(&mut self) -> Result<(), Error>{
+    pub fn read_cache(&mut self) -> Result<(), Error> {
         let mut cache_path = PathBuf::from(&self.app_dir);
         cache_path.push(KV_FILE_NAME);
         let d = read(cache_path)?;
@@ -56,25 +48,23 @@ impl App {
         self.kv_cache = Mutex::new(c);
         Ok(())
     }
-    pub fn flush_cache(&self) -> Result<(), Error>{
+    pub fn flush_cache(&self) -> Result<(), Error> {
         let mut cache_path = PathBuf::from(&self.app_dir);
         cache_path.push(KV_FILE_NAME);
 
         let c = toml::to_string(&*self.kv_cache.lock().unwrap())?;
-        
+
         write(cache_path, c)?;
         Ok(())
     }
 }
 
-
-
 #[cfg(test)]
 mod test {
     use super::*;
-    
-    fn test_user_key() -> [u8;32] {
-        let mut uk = [0u8;32];
+
+    fn test_user_key() -> [u8; 32] {
+        let mut uk = [0u8; 32];
         let rng = gen_nonce(32);
         for (i, d) in uk.iter_mut().enumerate() {
             *d = rng[i]
@@ -82,7 +72,7 @@ mod test {
         uk
     }
     #[test]
-    fn test_data_flow () {
+    fn test_data_flow() {
         // get sys temp dir
         let temp_dir = std::env::temp_dir();
         // init a App
@@ -92,25 +82,31 @@ mod test {
         app.set_user_key(test_user_key());
 
         // create a Cbox
-        let cbpa01: CreateCboxParams = serde_json::from_str(r#"
+        let cbpa01: CreateCboxParams = serde_json::from_str(
+            r#"
             {
                 "name": "cbox_x_00001",
                 "encryptData": true,
                 "provider": 1,
                 "accessToken": "token:for:web3.storage"
             }
-        "#).expect("failed tp do json deserialize");
+        "#,
+        )
+        .expect("failed tp do json deserialize");
         let new_box01 = app.create_cbox(cbpa01).expect("failed to create cbox");
         dbg!(new_box01);
         // create another Cbox
-        let cbpa02: CreateCboxParams = serde_json::from_str(r#"
+        let cbpa02: CreateCboxParams = serde_json::from_str(
+            r#"
             {
                 "name": "cbox_x_00002",
                 "encryptData": false,
                 "provider": 1,
                 "accessToken": "token:for:nft.storage"
             }
-        "#).expect("failed to do json deserialize");
+        "#,
+        )
+        .expect("failed to do json deserialize");
         let new_box02 = app.create_cbox(cbpa02).expect("failed to create cbox");
         dbg!(new_box02);
         // query Cbox
@@ -121,9 +117,8 @@ mod test {
         let mut obj01 = CBoxObj::default();
         obj01.box_id = 1;
         obj01.name = "cbox_obj_o1".into();
-        obj01.provider = 1;
         obj01.obj_type = 0;
-        
+
         // create cbox obj
         app.create_cbox_obj(&obj01).unwrap();
         // query CboxObj
@@ -133,19 +128,16 @@ mod test {
         dbg!(objlist_json);
     }
 
-    use fvm_ipld_car::{Block, CarHeader, CarReader, load_car};
-    use cid::{
-        Cid,
-        multihash::{
-            Code::Blake2b256,
-            MultihashDigest,
-        },
-    };
-    use fvm_ipld_encoding::{from_slice, to_vec, DAG_CBOR};
     use async_std::channel::bounded;
     use async_std::io::Cursor;
     use async_std::sync::RwLock;
+    use cid::{
+        multihash::{Code::Blake2b256, MultihashDigest},
+        Cid,
+    };
     use fvm_ipld_blockstore::{Blockstore, MemoryBlockstore};
+    use fvm_ipld_car::{load_car, Block, CarHeader, CarReader};
+    use fvm_ipld_encoding::{from_slice, to_vec, DAG_CBOR};
     use std::sync::Arc;
 
     #[test]
@@ -156,7 +148,7 @@ mod test {
             roots: vec![cid],
             version: 1,
         };
-        
+
         let bytes = to_vec(&header).unwrap();
         assert_eq!(from_slice::<CarHeader>(&bytes).unwrap(), header);
     }
@@ -185,7 +177,7 @@ mod test {
         write_task.await;
 
         let buffer: Vec<_> = buffer.read().await.clone();
-        
+
         let reader = Cursor::new(&buffer);
 
         let bs = MemoryBlockstore::default();
@@ -195,9 +187,9 @@ mod test {
     }
 
     #[test]
-    fn test_download(){
+    fn test_download() {
         let client = reqwest::blocking::Client::new();
-        
+
         let res = client.get("https://bafybeiedjtdnqo4terwb3peodgo46ueetdvpvaqietlz43s3brbg4ysxgq.ipfs.dweb.link/upload_test.txt").send().unwrap();
     }
 
@@ -213,7 +205,7 @@ mod test {
         // dbg!(&res);
         // dbg!(&res.bytes().unwrap());
     }
-    use serde::{Serialize};
+    use serde::Serialize;
 
     #[derive(Serialize)]
     pub struct TCarGen {
@@ -249,7 +241,7 @@ mod test {
         // write_task.await;
 
         // let buffer: Vec<_> = buffer.read().await.clone();
-        
+
         // let client = reqwest::blocking::Client::new();
         // let res = client.post("https://api.web3.storage/car")
         //     .header(reqwest::header::CONTENT_TYPE, "application/vnd.ipld.car")
@@ -259,6 +251,5 @@ mod test {
         //     .unwrap();
         // dbg!(&res);
         // dbg!(&res.bytes().unwrap());
-        
     }
 }

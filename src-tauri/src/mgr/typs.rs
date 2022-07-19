@@ -101,9 +101,10 @@ pub struct CBox {
 pub struct CBoxObj {
     pub id: i32,
     pub box_id: i32,
-    pub provider: i32,
     // encrypted data cid
     pub cid: String,
+    // hex string of sha256 sum
+    pub hash: String,
     #[serde(skip_deserializing)]
     pub nonce: Vec<u8>,
     pub size: u64,
@@ -113,6 +114,8 @@ pub struct CBoxObj {
     pub path: String,
     // path of file in host file system
     pub origin_path: String,
+    // backup status - 0 in queue | 1 uploading | 2 finished
+    pub status: u8,
     // object type - 0 file | 1 directory
     pub obj_type: u8,
     pub create_at: u64,
