@@ -97,3 +97,17 @@ Get box list
 let activeBox = await invoke('box_set_active', {id: 1});
 
 ```
+
+### backup
+Select files to backup
+```js
+await invoke('back', {box_id: 1, targets: ["/path/to/file"]});
+
+```
+
+#### box_obj_list
+Get box list
+```js
+let boxObjList = await invoke('box_obj_list', {box_id:1, last_id: 0});
+
+```

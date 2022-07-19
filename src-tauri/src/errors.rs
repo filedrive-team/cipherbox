@@ -10,6 +10,8 @@ pub enum Error {
     Convert(#[from] std::str::Utf8Error),
     #[error("Tauri api error: {0}")]
     TauriApi(String),
+    #[error("no db connection yet")]
+    NoDBConnection,
     #[error("password not match")]
     BadPassword,
     #[error("session expired")]
