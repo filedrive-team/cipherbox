@@ -5,7 +5,6 @@
 
 mod cipher;
 mod commands;
-mod models;
 mod mgr;
 mod errors;
 

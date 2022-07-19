@@ -2,13 +2,13 @@
 use tauri::{AppHandle, State};
 use crate::{
     cipher::{set_password, verify_password},
-    models::{CBox},
     mgr::{
       App,
       CIPHER_MESSAGE_NAME,
       AppInfo,
       CreateCboxParams,
       CommonRes,
+      CBox,
     },
     errors::Error,
 };
