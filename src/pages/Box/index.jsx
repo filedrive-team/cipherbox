@@ -45,29 +45,8 @@ const columns = [
   },
   {
     title: '备份时间',
-    dataIndex: 'time',
-    key: 'time',
-  },
-];
-
-const data = [
-  {
-    key: '1',
-    name: 'John Brown',
-    size: 32,
-    time: '2022-07-14',
-  },
-  {
-    key: '2',
-    name: 'Jim Green',
-    size: 32,
-    time: '2022-07-14',
-  },
-  {
-    key: '3',
-    name: 'Joe Black',
-    size: 32,
-    time: '2022-07-14',
+    dataIndex: 'createAt',
+    key: 'createAt',
   },
 ];
 
@@ -146,12 +125,46 @@ const Box = () => {
     setMenu(<Menu items={boxItem} />);
   }
 
+  async function f1() {
+    /**
+     * @type {
+     * {activeBox:{name:string,accessToken:string,id:number
+     * ,provider:number},
+     * hasPasswordSet:boolean,sessionExpired:boolean}}
+     */
+    const appInfo = (await invoke('app_info')).result;
+    /**
+     *
+     * @type {[{boxId:number,cid:string,createAt:number,
+     * hash:string,id:number,modifyAt:number,name:string,
+     * objType:number,originPath:string,path:string,size:number,
+     * status:number
+     * }]}
+     */
+    const response = (
+      await invoke('box_obj_list', {
+        boxId: appInfo.activeBox.id,
+        lastId: 0,
+      })
+    ).result;
+    setData(response);
+  }
+
   useEffect(() => {
     f();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    f1();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const history = useHistory();
+  /**
+   * @type [{boxId:number,cid:string,createAt:number,  hash:string,id:number,modifyAt:number,name:string, objType:number,originPath:string,path:string,size:number, status:number }]
+   */
+  const [data, setData] = useState();
 
   return (
     <div className={styles.homeWrap}>
@@ -159,12 +172,7 @@ const Box = () => {
       <div className={classNames(styles.homeBody)}>
         <div className={styles.top} data-tauri-drag-region>
           <Input placeholder={'请输入'} prefix={<SearchIcon />} />
-          <div
-            onClick={() => {
-              history.push('/test');
-            }}
-            style={{ cursor: 'pointer' }}
-          >
+          <div onClick={() => {}} style={{ cursor: 'pointer' }}>
             反馈
           </div>
         </div>
@@ -194,26 +202,33 @@ const Box = () => {
                   const path = await open();
 
                   /**
-                   * @type {{activeBox:{name:string,accessToken:string,id:number,provider:number},hasPasswordSet:boolean,sessionExpired:boolean}}
+                   * @type {
+                   * {activeBox:{name:string,accessToken:string,id:number
+                   * ,provider:number},
+                   * hasPasswordSet:boolean,sessionExpired:boolean}}
                    */
                   const appInfo = (await invoke('app_info')).result;
-
-                  console.log(
-                    '+===========activeBox========',
-                    appInfo.activeBox,
-                  );
 
                   const response = await invoke('backup', {
                     boxId: appInfo.activeBox.id,
                     targets: [path],
                   });
 
-                  const response1 = await invoke('box_obj_list', {
-                    boxId: appInfo.activeBox.id,
-                    lastId: 0,
-                  });
-
-                  console.log('========', response, response1);
+                  /**
+                   *
+                   * @type {[{boxId:number,cid:string,createAt:number,
+                   * hash:string,id:number,modifyAt:number,name:string,
+                   * objType:number,originPath:string,path:string,size:number,
+                   * status:number
+                   * }]}
+                   */
+                  const response1 = (
+                    await invoke('box_obj_list', {
+                      boxId: appInfo.activeBox.id,
+                      lastId: 0,
+                    })
+                  ).result;
+                  setData(response1);
                 }}
               >
                 {value.name}
