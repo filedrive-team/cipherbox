@@ -2,8 +2,16 @@
   height: 100vh;
   width: 72px;
   background: linear-gradient(113deg, var(--color-2e2d4b) 0%, var(--color-010000) 71%);
-  padding-top: 100px;
+  padding-top: 44px;
   box-sizing: border-box;
+
+  .logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
   .item {
     display: flex;
     flex-direction: column;

@@ -16,6 +16,7 @@ import { useHistory } from 'react-router';
 import { RouterPath } from '@/router';
 import { invoke } from '@tauri-apps/api';
 import { useEffect, useState } from 'react';
+import { open } from '@tauri-apps/api/dialog';
 
 const tabData = [
   {
@@ -86,6 +87,8 @@ const Box = () => {
      */
     const appInfo = (await invoke('app_info')).result;
 
+    console.log('==appInfo==', appInfo);
+
     let boxItem = boxList?.map((value, index) => {
       return {
         key: index + 1,
@@ -145,12 +148,13 @@ const Box = () => {
 
   useEffect(() => {
     f();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const history = useHistory();
 
   return (
-    <div className={styles.homeWrap} onClick={() => {}}>
+    <div className={styles.homeWrap}>
       <SideBar />
       <div className={classNames(styles.homeBody)}>
         <div className={styles.top} data-tauri-drag-region>
@@ -186,6 +190,31 @@ const Box = () => {
                 key={index}
                 className={styles.tabItem}
                 style={{ '--bg': value.bg, '--prefix': value.icon }}
+                onClick={async () => {
+                  const path = await open();
+
+                  /**
+                   * @type {{activeBox:{name:string,accessToken:string,id:number,provider:number},hasPasswordSet:boolean,sessionExpired:boolean}}
+                   */
+                  const appInfo = (await invoke('app_info')).result;
+
+                  console.log(
+                    '+===========activeBox========',
+                    appInfo.activeBox,
+                  );
+
+                  const response = await invoke('backup', {
+                    boxId: appInfo.activeBox.id,
+                    targets: [path],
+                  });
+
+                  const response1 = await invoke('box_obj_list', {
+                    boxId: appInfo.activeBox.id,
+                    lastId: 0,
+                  });
+
+                  console.log('========', response, response1);
+                }}
               >
                 {value.name}
               </div>
