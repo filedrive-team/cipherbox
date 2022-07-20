@@ -1,5 +1,6 @@
 import BgGradient from '@/assets/password/bg_gradient.png';
 import codeIcon from '@/assets/password/code.png';
+import { ReactComponent as LogoRight } from '@/assets/logo_right.svg';
 import styles from './index.module.scss';
 import { Input, notification } from 'antd';
 import { useHistory } from 'react-router';
@@ -38,14 +39,20 @@ const Password = () => {
         history.push(RouterPath.create);
       }
     } else {
+      console.log('======password_set001======');
       const password_set = invoke('password_set', { password: password });
+      console.log('======password_set002======');
+
       // history.push(RouterPath.create);
     }
   };
   return (
-    <div className={styles.passwordWrap}>
+    <div className={styles.passwordWrap} data-tauri-drag-region>
       <div className={styles.bgWrap}>
         <img src={BgGradient} alt={''} />
+      </div>
+      <div className={styles.logo}>
+        <LogoRight />
       </div>
       <div className={styles.contentWrap}>
         <div className={styles.leftWrap}>

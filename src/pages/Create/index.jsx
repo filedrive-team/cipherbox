@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useHistory } from 'react-router';
 import { RouterPath } from '@/router';
 import { invoke } from '@tauri-apps/api';
+import { ReactComponent as LogoRight } from '@/assets/logo_right.svg';
 
 const Create = () => {
   const history = useHistory();
@@ -43,9 +44,12 @@ const Create = () => {
     history.replace(RouterPath.box);
   };
   return (
-    <div className={styles.createWrap}>
+    <div className={styles.createWrap} data-tauri-drag-region>
       <div className={styles.bgWrap}>
         <img src={BgGradient} alt={''} />
+      </div>
+      <div className={styles.logo}>
+        <LogoRight />
       </div>
       <div className={styles.contentWrap}>
         <img src={FileIcon} alt={''} />
