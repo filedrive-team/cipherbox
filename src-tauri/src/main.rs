@@ -8,23 +8,24 @@ mod commands;
 mod errors;
 mod mgr;
 
-use tauri::Manager;
-
 use crate::cipher::DerivedKey;
 use crate::commands::{
     app_info, backup, box_create, box_list, box_obj_list, box_set_active, password_set,
     password_verify,
 };
 use crate::mgr::App;
+use std::fs::create_dir_all;
+use tauri::Manager;
 
 fn main() {
     let context = tauri::generate_context!();
     tauri::Builder::default()
         .setup(|app| {
-            let app_dir = app
-                .path_resolver()
-                .app_dir()
-                .ok_or("failed to get app dir during setup")?;
+            let app_dir = app.path_resolver().app_dir().unwrap();
+
+            if !&app_dir.exists() {
+                _ = create_dir_all(&app_dir).unwrap();
+            }
             let app_dir = app_dir.as_os_str().to_owned();
             let mut cipherboxapp = App::new(app_dir);
             cipherboxapp.init_db().expect("failed to open sqlite");
