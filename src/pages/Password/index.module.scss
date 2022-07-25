@@ -2,15 +2,16 @@
   position: relative;
   width: 100vw;
   height: 100vh;
-  background: var(--color-F0F0F4);
   display: flex;
   align-items: center;
   justify-content: center;
+
 
   .bgWrap {
     position: absolute;
     right: 0;
     bottom: 0;
+    z-index: -1;
 
     img {
       width: 876px;

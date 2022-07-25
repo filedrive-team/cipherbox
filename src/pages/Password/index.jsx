@@ -17,9 +17,6 @@ const Password = () => {
      * @type {{result:{hasPasswordSet:boolean,activeBox:any}}}
      */
     const appInfo = await invoke('app_info');
-
-    console.log('====', appInfo);
-
     if (appInfo.result.hasPasswordSet === true) {
       const password_verify = await invoke('password_verify', {
         password: password,
@@ -39,11 +36,8 @@ const Password = () => {
         history.push(RouterPath.create);
       }
     } else {
-      console.log('======password_set001======');
       const password_set = invoke('password_set', { password: password });
-      console.log('======password_set002======');
-
-      // history.push(RouterPath.create);
+      history.push(RouterPath.create);
     }
   };
   return (
