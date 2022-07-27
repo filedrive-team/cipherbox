@@ -12,16 +12,29 @@
     margin-bottom: 20px;
   }
 
-  .item {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    font-size: 10px;
-    color: var(--color-FFFFFF-80);
+  .itemWrap {
 
-    &>:last-child {
-      padding-top: 5px;
+    & > :not(:first-child) {
+      margin-top: 20px;
+    }
+
+    .item {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-size: 10px;
+      color: var(--color-FFFFFF-80);
+      cursor: pointer;
+
+      img {
+        width: 30px;
+        height: 26px;
+      }
+
+      & > :last-child {
+        padding-top: 5px;
+      }
     }
   }
 }

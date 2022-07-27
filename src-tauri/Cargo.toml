@@ -36,6 +36,9 @@ thiserror = "1.0"
 tiny_http = "0.11.0"
 toml = "0.5.9"
 
+[dependencies.tauri-plugin-fs-extra]
+git = "https://github.com/tauri-apps/tauri-plugin-fs-extra"
+
 [features]
 # by default Tauri runs in production mode
 # when `tauri dev` runs it is executed with `cargo run --no-default-features` if `devPath` is an URL

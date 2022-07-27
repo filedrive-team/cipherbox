@@ -1,4 +1,4 @@
-import { Route } from 'react-router';
+import { Route } from 'react-router-dom';
 import Bar from '@/components/Bar';
 
 const Layout = (props) => {

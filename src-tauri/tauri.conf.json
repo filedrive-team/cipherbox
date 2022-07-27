@@ -20,6 +20,22 @@
         "save": true,
         "confirm": true,
         "ask": true
+      },
+      "fs": {
+        "all": true
+      },
+      "shell": {
+        "all": true,
+        "scope": [
+          {
+            "name": "show-in-finder",
+            "cmd": "open",
+            "args": [
+              "-R",
+              { "validator": "\\S+" }
+            ]
+          }
+        ]
       }
     },
     "bundle": {

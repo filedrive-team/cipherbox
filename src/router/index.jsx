@@ -1,27 +1,21 @@
 import './index.scss';
-import {
-  BrowserRouter,
-  Redirect,
-  Route,
-  Switch,
-  withRouter,
-} from 'react-router-dom';
+import { BrowserRouter, Redirect, Route, Switch } from 'react-router-dom';
 import Create from '@/pages/create';
-import Box from '@/pages/Box';
 import Test from '@/pages/Test';
 import Password from '@/pages/Password';
-import { TransitionGroup, CSSTransition } from 'react-transition-group';
+import Dashboard from '@/pages/Dashboard';
 import React from 'react';
 import Layout from '@/layout';
 
 export class RouterPath {
   static password = '/password';
-  static box = '/box';
+  static box = '/dashboard/box';
   static create = '/create';
   static test = '/test';
+  static dashboard = '/dashboard';
+  static operation = '/dashboard/operation';
+  static backup = '/dashboard/backup';
 }
-
-const DEFAULT_SCENE_CONFIG = {};
 
 const RouterConfig = [
   {
@@ -29,8 +23,8 @@ const RouterConfig = [
     component: Password,
   },
   {
-    path: RouterPath.box,
-    component: Box,
+    path: RouterPath.dashboard,
+    component: Dashboard,
   },
   {
     path: RouterPath.create,
@@ -46,40 +40,24 @@ const RouterConfig = [
   },
 ];
 
-const getSceneConfig = (location) => {
-  const matchedRoute = RouterConfig.find((config) =>
-    new RegExp(`^${config.path}$`).test(location.pathname),
-  );
-  return (matchedRoute && matchedRoute.sceneConfig) || DEFAULT_SCENE_CONFIG;
-};
-
-let oldLocation = null;
-const Routes = withRouter(({ location, history }) => {
-  let classNames = '';
-  if (history.action === 'PUSH') {
-    classNames = 'forward-' + getSceneConfig(location).enter;
-  } else if (history.action === 'POP' && oldLocation) {
-    classNames = 'back-' + getSceneConfig(oldLocation).exit;
-  }
-  oldLocation = location;
+const Routes = () => {
   return (
-    <TransitionGroup
-      className={'router-wrapper'}
-      childFactory={(child) => React.cloneElement(child, { classNames })}
-    >
-      <CSSTransition timeout={500} key={location.pathname}>
-        <Switch location={location}>
-          {RouterConfig.map((config, index) => {
-            return <Layout exact key={index} {...config} />;
-          })}
-          <Route exact path={'/'}>
-            <Redirect to={RouterPath.password} />
-          </Route>
-        </Switch>
-      </CSSTransition>
-    </TransitionGroup>
+    <Switch>
+      {RouterConfig.map((value, index) => {
+        return (
+          <Layout
+            exact={value.path !== RouterPath.dashboard}
+            key={index}
+            {...value}
+          ></Layout>
+        );
+      })}
+      <Route exact path={'/'}>
+        <Redirect to={RouterPath.password} />
+      </Route>
+    </Switch>
   );
-});
+};
 
 const MRouter = () => {
   return (

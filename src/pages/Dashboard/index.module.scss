@@ -1,0 +1,67 @@
+.homeWrap {
+  height: 100%;
+  display: flex;
+
+  .layoutSide {
+    flex: 0 0 auto !important;
+    width: 72px !important;
+    min-width: 72px !important;
+  }
+
+  .layoutRight {
+    background: var(--color-FFFFFF);
+  }
+
+  .headerWrap {
+    background: white;
+    height: 48px;
+    padding: 0px !important;
+  }
+
+  .top {
+    height: 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0px 2px 4px -2px var(--color-111029-10);
+
+
+    :global {
+      .ant-input-affix-wrapper {
+        max-width: 255px;
+        margin-left: 30px;
+        border: 1px solid var(--color-CACED7);
+        border-radius: 16px;
+      }
+
+      .ant-input-affix-wrapper-focused {
+        box-shadow: 0px 0px;
+      }
+
+
+      input::placeholder {
+        color: var(--color-CACED7);
+      }
+    }
+
+    & > div {
+      color: var(--color-48567D);
+      font-size: 12px;
+      flex-shrink: 0;
+      padding-right: 30px;
+    }
+  }
+
+  .contentWrap {
+    box-sizing: border-box;
+    margin-left: 30px;
+    margin-right: 30px;
+  }
+}
+
+:global {
+  .dropButton {
+    font-size: 12px;
+    color: var(--color);
+  }
+}
