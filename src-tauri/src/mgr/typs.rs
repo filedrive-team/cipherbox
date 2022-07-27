@@ -25,7 +25,7 @@ pub struct AppInfo {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct KVCache {
-    pub active_box_id: i32,
+    pub active_box_id: i64,
 }
 
 #[derive(Debug, Default)]
@@ -43,7 +43,7 @@ pub struct App {
 pub struct CreateCboxParams {
     pub name: String,
     pub encrypt_data: bool,
-    pub provider: i32,
+    pub provider: i64,
     pub access_token: String,
 }
 
@@ -75,7 +75,7 @@ impl<T: Serialize> CommonRes<T> {
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CBox {
-    pub id: i32,
+    pub id: i64,
     pub name: String,
     // most of time backup should be encrypt unless user intentionly set it false, maybe for public share
     pub encrypt_data: bool,
@@ -87,7 +87,7 @@ pub struct CBox {
     #[serde(skip_deserializing)]
     pub secret: Vec<u8>,
     // the storage provider, like web3.storage
-    pub provider: i32,
+    pub provider: i64,
     // access token for provider api
     pub access_token: String,
     // the current showing box for user
@@ -99,8 +99,8 @@ pub struct CBox {
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CBoxObj {
-    pub id: i32,
-    pub box_id: i32,
+    pub id: i64,
+    pub box_id: i64,
     // encrypted data cid
     pub cid: String,
     // hex string of sha256 sum
@@ -114,12 +114,15 @@ pub struct CBoxObj {
     pub path: String,
     // path of file in host file system
     pub origin_path: String,
-    // backup status - 0 in queue | 1 uploading | 2 finished
+    // backup status - 0 in queue | 1 uploading | 2 uploaded | 3 finished
     pub status: u8,
     // object type - 0 file | 1 directory
     pub obj_type: u8,
     pub create_at: u64,
     pub modify_at: u64,
+    pub parent_id: i64,
+    // task type - 0 single task | 1 has children tasks
+    pub task_type: u8,
 }
 
 #[derive(Debug)]

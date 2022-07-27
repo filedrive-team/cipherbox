@@ -1,7 +1,7 @@
 use super::*;
 
 impl App {
-    pub fn set_active_box(&self, box_id: i32) -> Result<CBox, Error> {
+    pub fn set_active_box(&self, box_id: i64) -> Result<CBox, Error> {
         let b = self.get_cbox_by_id(box_id)?;
         let mut mg = self.kv_cache.lock().unwrap();
         (*mg).active_box_id = box_id;
@@ -32,7 +32,7 @@ impl App {
                 insert into cbox (name, encrypt_data, provider, access_token, secret, create_at, modify_at) values (?1, ?2, ?3, ?4, ?5, ?6, ?7)
             "#, params![cbox.name, cbox.encrypt_data, cbox.provider, cbox.access_token, cbox.secret, cbox.create_at, cbox.modify_at])?;
             let id = c.last_insert_rowid();
-            cbox.id = id as i32;
+            cbox.id = id;
             drop(mg);
             self.set_active_box(cbox.id)?;
         }
@@ -78,7 +78,7 @@ impl App {
             Err(Error::SessionExpired)
         }
     }
-    pub fn get_cbox_by_id(&self, box_id: i32) -> Result<CBox, Error> {
+    pub fn get_cbox_by_id(&self, box_id: i64) -> Result<CBox, Error> {
         if let Some(c) = &*self.conn.lock().unwrap() {
             let b = c
                 .query_row(

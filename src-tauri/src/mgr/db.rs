@@ -43,7 +43,9 @@ impl App {
                     status INTEGER,
                     obj_type INTEGER,
                     create_at INTEGER,
-                    modify_at INTEGER
+                    modify_at INTEGER,
+                    parent_id INTEGER,
+                    task_type INTEGER
                 );
                 CREATE TABLE IF NOT EXISTS identity (
                     id    INTEGER PRIMARY KEY AUTOINCREMENT,

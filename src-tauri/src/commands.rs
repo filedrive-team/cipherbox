@@ -11,7 +11,7 @@ use tauri::{AppHandle, State};
  */
 #[tauri::command]
 pub async fn box_obj_list(
-    box_id: i32,
+    box_id: i64,
     last_id: i32,
     app: State<'_, App>,
 ) -> Result<CommonRes<Vec<CBoxObj>>, Error> {
@@ -31,7 +31,7 @@ pub async fn box_obj_list(
 
 #[tauri::command]
 pub async fn backup(
-    box_id: i32,
+    box_id: i64,
     targets: Vec<String>,
     app: State<'_, App>,
 ) -> Result<CommonRes<()>, Error> {
@@ -59,7 +59,7 @@ pub async fn box_create(
  * api - set active box
  */
 #[tauri::command]
-pub async fn box_set_active(id: i32, app: State<'_, App>) -> Result<CommonRes<CBox>, Error> {
+pub async fn box_set_active(id: i64, app: State<'_, App>) -> Result<CommonRes<CBox>, Error> {
     match app.set_active_box(id) {
         Ok(cb) => Ok(CommonRes::ok(cb)),
         Err(e) => Ok(CommonRes::error(e)),

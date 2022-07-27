@@ -1,7 +1,7 @@
 use super::*;
 
 impl App {
-    pub fn add_backup_tasks(&self, box_id: i32, targets: Vec<String>) -> Result<(), Error> {
+    pub fn add_backup_tasks(&self, box_id: i64, targets: Vec<String>) -> Result<(), Error> {
         if !self.has_connection() {
             return Err(Error::NoDBConnection);
         }
