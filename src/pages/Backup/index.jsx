@@ -1,9 +1,5 @@
 import styles from '@/pages/Backup/index.module.scss';
-import { Table } from 'antd';
-
 import {
-  color3453F4,
-  color435179,
   copyButton,
   copyIcon,
   switchButton,
@@ -11,6 +7,8 @@ import {
 } from '@/styles/home.module.scss';
 import { useState } from 'react';
 import { useHistory } from 'react-router';
+import List from '@/components/List';
+import PageControl from '@/components/PageControl';
 
 const tabData = [
   {
@@ -50,7 +48,7 @@ const Backup = () => {
   /**
    * @type [{boxId:number,cid:string,createAt:number,  hash:string,id:number,modifyAt:number,name:string, objType:number,originPath:string,path:string,size:number, status:number }]
    */
-  const [data, setData] = useState();
+  const [data, setData] = useState([]);
 
   return (
     <div>
@@ -68,11 +66,16 @@ const Backup = () => {
         })}
       </div>
       <div className={styles.listWrap}>
-        <Table
+        <List
           columns={columns}
           dataSource={data}
-          rowKey={(record) => record.key}
+          rowKey={(value) => {
+            return value.id;
+          }}
         />
+        <div className={styles.listBottom}>
+          {data.length > 10 ? <PageControl total={50} /> : null}
+        </div>
       </div>
     </div>
   );
