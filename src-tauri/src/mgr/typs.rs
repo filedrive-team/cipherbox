@@ -121,7 +121,7 @@ pub struct CBoxObj {
     pub create_at: u64,
     pub modify_at: u64,
     pub parent_id: i64,
-    // task type - 0 single task | 1 has children tasks
+    // task type - 0 single task | 1 parent task (has children tasks) | 2 child task
     pub task_type: u8,
 }
 
