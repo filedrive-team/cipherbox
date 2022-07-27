@@ -6,6 +6,38 @@
     width: 100%;
   }
 
+  .top {
+    height: 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0px 2px 4px -2px var(--color-111029-10);
+
+    :global {
+      .ant-input-affix-wrapper {
+        max-width: 255px;
+        margin-left: 24px;
+        border: 1px solid var(--color-CACED7);
+        border-radius: 16px;
+      }
+
+      .ant-input-affix-wrapper-focused {
+        box-shadow: 0px 0px;
+      }
+
+
+      input::placeholder {
+        color: var(--color-CACED7);
+      }
+    }
+
+    & > div {
+      color: var(--color-48567D);
+      font-size: 12px;
+      flex-shrink: 0;
+      padding-right: 24px;
+    }
+  }
 }
 
 :global {
@@ -17,13 +49,14 @@
 
 .tabWrap {
   display: flex;
-  padding: 22px 0px;
+  padding: 22px 24px;
 
   & > :last-child {
-    margin-left: 25px;
+    margin-left: 15px;
   }
 
   .tabItem {
+    width: 70px;
     height: 26px;
     color: white;
     position: relative;
@@ -43,18 +76,19 @@
       padding-left: 15px;
       padding-right: 15px;
 
-      &:before {
-        content: '';
-        width: 14px;
-        height: 14px;
-        background: var(--prefix);
-        background-size: cover;
-        z-index: 2;
-        left: 14px;
-      }
+    &:before {
+      position: absolute;
+      content: '';
+      width: 14px;
+      height: 14px;
+      background: var(--prefix);
+      background-size: cover;
+      z-index: 10;
+      left: 14px;
     }
   }
 }
+
 
 .listWrap {
   :global {
