@@ -1,7 +1,7 @@
 import { observer } from 'mobx-react';
 import styles from './index.module.scss';
 import classNames from 'classnames';
-import { Dropdown, Menu } from 'antd';
+import { Dropdown, Input, Menu, Table } from 'antd';
 import {
   copyIcon,
   copyButton,
@@ -20,9 +20,6 @@ import { exists } from 'tauri-plugin-fs-extra-api';
 import { ReactComponent as DownLoadIcon } from '@/assets/box/download.svg';
 import { ReactComponent as OpenIcon } from '@/assets/box/open.svg';
 import { shell } from '@tauri-apps/api';
-import PageControl from '@/components/PageControl';
-import List from '@/components/List';
-
 const tabData = [
   {
     icon: copyIcon,
@@ -80,7 +77,6 @@ const columns = [
 
 const Box = () => {
   const [menu, setMenu] = useState();
-  const [data, setData] = useState([]);
 
   async function f() {
     /**
@@ -198,6 +194,7 @@ const Box = () => {
   /**
    * @type [{exists:boolean,boxId:number,cid:string,createAt:number,  hash:string,id:number,modifyAt:number,name:string, objType:number,originPath:string,path:string,size:number, status:number }]
    */
+  const [data, setData] = useState();
 
   return (
     <div className={styles.homeWrap}>
@@ -263,16 +260,11 @@ const Box = () => {
           })}
         </div>
         <div className={styles.listWrap}>
-          <List
+          <Table
             columns={columns}
             dataSource={data}
-            rowKey={(value) => {
-              return value.id;
-            }}
+            rowKey={(record) => record.id}
           />
-          <div className={styles.listBottom}>
-            {data.length > 10 ? <PageControl total={50} /> : null}
-          </div>
         </div>
       </div>
     </div>
