@@ -3,10 +3,14 @@ use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::{
     ffi::OsString,
-    sync::Mutex,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
     time::{SystemTime, SystemTimeError},
 };
 
+pub const CHUNK_SIZE: u64 = 1048576;
 pub static DB_FILE_NAME: &str = "cipherbox.db";
 pub static CIPHER_MESSAGE_NAME: &str = "cipher_message";
 pub static KV_FILE_NAME: &str = "cipherbox.kv.toml";
@@ -36,6 +40,7 @@ pub struct App {
     pub app_dir: OsString,
     pub providers: Vec<Provider>,
     pub kv_cache: Mutex<KVCache>,
+    pub processing: Arc<AtomicBool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -114,7 +119,7 @@ pub struct CBoxObj {
     pub path: String,
     // path of file in host file system
     pub origin_path: String,
-    // backup status - 0 in queue | 1 uploading | 2 uploaded | 3 finished
+    // backup status - 0 in queue | 1 uploading | 2 uploaded | 3 finished | 9 failed
     pub status: u8,
     // object type - 0 file | 1 directory
     pub obj_type: u8,
@@ -123,6 +128,26 @@ pub struct CBoxObj {
     pub parent_id: i64,
     // task type - 0 single task | 1 parent task (has children tasks) | 2 child task
     pub task_type: u8,
+    pub err: String,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CBoxTask {
+    pub id: i64,
+    pub box_id: i64,
+    pub obj_id: i64,
+    // path of file in host file system
+    pub origin_path: String,
+    // target path to do recover
+    pub target_path: String,
+    // status - 0 in queue | 1 uploading | 2 uploaded | 3 downloading | 4 downloaded | 5 finished | 6 paused | 9 failed
+    pub status: u8,
+    pub create_at: u64,
+    pub modify_at: u64,
+    // task type - 0 backup task | 1 recover task
+    pub task_type: u8,
+    pub err: String,
 }
 
 #[derive(Debug)]

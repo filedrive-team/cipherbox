@@ -4,12 +4,16 @@ use std::{
     ffi::OsString,
     fs::{read, write},
     path::PathBuf,
-    sync::Mutex,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
 };
 
 mod cbox;
 mod cboxobj;
 mod db;
+mod tasks;
 mod typs;
 mod userkey;
 pub use typs::*;
@@ -25,6 +29,7 @@ impl App {
             put_api: "{}://api.web3.storage/{}".into(),
             get_api: "{}://dweb.link/ipfs/{}?{}".into(),
         }];
+        app.processing = Arc::new(AtomicBool::new(false));
         app
     }
     pub fn app_info(&self) -> AppInfo {

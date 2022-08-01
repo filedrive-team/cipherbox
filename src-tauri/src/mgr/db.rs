@@ -45,7 +45,20 @@ impl App {
                     create_at INTEGER,
                     modify_at INTEGER,
                     parent_id INTEGER,
-                    task_type INTEGER
+                    task_type INTEGER,
+                    err TEXT
+                );
+                CREATE TABLE IF NOT EXISTS cbox_task (
+                    id    INTEGER PRIMARY KEY AUTOINCREMENT,
+                    box_id INTEGER,
+                    obj_id INTEGER,
+                    origin_path TEXT,
+                    target_path TEXT,
+                    status INTEGER,
+                    create_at INTEGER,
+                    modify_at INTEGER,
+                    task_type INTEGER,
+                    err TEXT
                 );
                 CREATE TABLE IF NOT EXISTS identity (
                     id    INTEGER PRIMARY KEY AUTOINCREMENT,
