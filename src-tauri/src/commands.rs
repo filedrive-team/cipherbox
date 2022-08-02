@@ -4,6 +4,7 @@ use crate::{
     errors::Error,
     mgr::{App, AppInfo, CBox, CBoxObj, CommonRes, CreateCboxParams, CIPHER_MESSAGE_NAME},
 };
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, State};
 
 /*
@@ -13,8 +14,9 @@ use tauri::{AppHandle, State};
 pub async fn box_obj_list(
     box_id: i64,
     last_id: i32,
-    app: State<'_, App>,
+    app: State<'_, Arc<Mutex<App>>>,
 ) -> Result<CommonRes<Vec<CBoxObj>>, Error> {
+    let app = app.lock().unwrap();
     match app.list_cbox_obj() {
         Ok(list) => Ok(CommonRes::ok(list)),
         Err(e) => Ok(CommonRes::error(e)),
@@ -33,8 +35,9 @@ pub async fn box_obj_list(
 pub async fn backup(
     box_id: i64,
     targets: Vec<String>,
-    app: State<'_, App>,
+    app: State<'_, Arc<Mutex<App>>>,
 ) -> Result<CommonRes<()>, Error> {
+    let app = app.lock().unwrap();
     match app.add_backup_tasks(box_id, targets) {
         Ok(_) => Ok(CommonRes::ok(())),
         Err(e) => Ok(CommonRes::error(e)),
@@ -47,8 +50,9 @@ pub async fn backup(
 #[tauri::command]
 pub async fn box_create(
     par: CreateCboxParams,
-    app: State<'_, App>,
+    app: State<'_, Arc<Mutex<App>>>,
 ) -> Result<CommonRes<CBox>, Error> {
+    let app = &mut app.lock().unwrap();
     match app.create_cbox(par) {
         Ok(cb) => Ok(CommonRes::ok(cb)),
         Err(e) => Ok(CommonRes::error(e)),
@@ -59,7 +63,11 @@ pub async fn box_create(
  * api - set active box
  */
 #[tauri::command]
-pub async fn box_set_active(id: i64, app: State<'_, App>) -> Result<CommonRes<CBox>, Error> {
+pub async fn box_set_active(
+    id: i64,
+    app: State<'_, Arc<Mutex<App>>>,
+) -> Result<CommonRes<CBox>, Error> {
+    let app = &mut app.lock().unwrap();
     match app.set_active_box(id) {
         Ok(cb) => Ok(CommonRes::ok(cb)),
         Err(e) => Ok(CommonRes::error(e)),
@@ -70,7 +78,8 @@ pub async fn box_set_active(id: i64, app: State<'_, App>) -> Result<CommonRes<CB
  * api - box list
  */
 #[tauri::command]
-pub async fn box_list(app: State<'_, App>) -> Result<CommonRes<Vec<CBox>>, Error> {
+pub async fn box_list(app: State<'_, Arc<Mutex<App>>>) -> Result<CommonRes<Vec<CBox>>, Error> {
+    let app = app.lock().unwrap();
     match app.list_cbox() {
         Ok(list) => Ok(CommonRes::ok(list)),
         Err(e) => Ok(CommonRes::error(e)),
@@ -83,7 +92,7 @@ pub async fn box_list(app: State<'_, App>) -> Result<CommonRes<Vec<CBox>>, Error
 pub async fn password_set(
     password: String,
     app: AppHandle,
-    capp: State<'_, App>,
+    capp: State<'_, Arc<Mutex<App>>>,
 ) -> Result<CommonRes<()>, Error> {
     let mut path_to_save = match app.path_resolver().app_dir() {
         Some(p) => p,
@@ -98,8 +107,8 @@ pub async fn password_set(
         Ok(key) => key,
         Err(e) => return Ok(CommonRes::error(e)),
     };
-
-    *capp.user_key.lock().unwrap() = Some(key);
+    let capp = &mut capp.lock().unwrap();
+    capp.user_key = Some(key);
     Ok(CommonRes::ok(()))
 }
 
@@ -111,7 +120,7 @@ pub async fn password_set(
 pub async fn password_verify(
     password: String,
     app: AppHandle,
-    capp: State<'_, App>,
+    capp: State<'_, Arc<Mutex<App>>>,
 ) -> Result<CommonRes<bool>, Error> {
     let mut path_to_save = match app.path_resolver().app_dir() {
         Some(p) => p,
@@ -126,7 +135,8 @@ pub async fn password_verify(
         Ok(key) => key,
         Err(e) => return Ok(CommonRes::error(e)),
     };
-    *capp.user_key.lock().unwrap() = Some(key);
+    let capp = &mut capp.lock().unwrap();
+    capp.user_key = Some(key);
     Ok(CommonRes::ok(true))
 }
 
@@ -135,8 +145,8 @@ pub async fn password_verify(
  *
  */
 #[tauri::command]
-pub async fn app_info(capp: State<'_, App>) -> Result<CommonRes<AppInfo>, Error> {
-    Ok(CommonRes::ok(capp.app_info()))
+pub async fn app_info(capp: State<'_, Arc<Mutex<App>>>) -> Result<CommonRes<AppInfo>, Error> {
+    Ok(CommonRes::ok(capp.lock().unwrap().app_info()))
 }
 
 // #[tauri::command]

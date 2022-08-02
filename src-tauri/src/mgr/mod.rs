@@ -20,24 +20,22 @@ pub use typs::*;
 //pub use userkey::*;
 
 impl App {
-    pub fn new(app_dir: OsString) -> Self {
-        let mut app = App::default();
-        app.app_dir = app_dir;
-        app.providers = vec![Provider {
+    pub fn setup(&mut self, app_dir: OsString) {
+        self.app_dir = app_dir;
+        self.providers = vec![Provider {
             id: 1,
             name: "web3storage".into(),
             put_api: "{}://api.web3.storage/{}".into(),
             get_api: "{}://dweb.link/ipfs/{}?{}".into(),
         }];
-        app.processing = Arc::new(AtomicBool::new(false));
-        app
+        self.processing = false;
     }
     pub fn app_info(&self) -> AppInfo {
         let mut info = AppInfo::default();
 
         info.has_password_set = self.has_set_password();
         info.session_expired = !self.is_user_key_set();
-        let active_box_id = (*self.kv_cache.lock().unwrap()).active_box_id;
+        let active_box_id = self.kv_cache.active_box_id;
         if active_box_id > 0 {
             if let Ok(b) = self.get_cbox_by_id(active_box_id) {
                 info.active_box = Some(b);
@@ -50,14 +48,14 @@ impl App {
         cache_path.push(KV_FILE_NAME);
         let d = read(cache_path)?;
         let c: KVCache = toml::from_slice(&d)?;
-        self.kv_cache = Mutex::new(c);
+        self.kv_cache = c;
         Ok(())
     }
     pub fn flush_cache(&self) -> Result<(), Error> {
         let mut cache_path = PathBuf::from(&self.app_dir);
         cache_path.push(KV_FILE_NAME);
 
-        let c = toml::to_string(&*self.kv_cache.lock().unwrap())?;
+        let c = toml::to_string(&self.kv_cache)?;
 
         write(cache_path, c)?;
         Ok(())
@@ -81,7 +79,8 @@ mod test {
         // get sys temp dir
         let temp_dir = std::env::temp_dir();
         // init a App
-        let mut app = App::new(temp_dir.as_os_str().to_owned());
+        let mut app = App::default();
+        app.setup(temp_dir.as_os_str().to_owned());
         // init db
         app.init_db().expect("failed to init sqlite");
         app.set_user_key(test_user_key());
@@ -219,42 +218,50 @@ mod test {
     }
     #[async_std::test]
     async fn test_upload_car() {
-        // let rawdata = to_vec(&TCarGen {
-        //     name: "ii".into(),
-        //     data: b"Hush little baby don't say a word".to_vec(),
-        // }).unwrap();
-        // let buffer: Arc<RwLock<Vec<u8>>> = Default::default();
-        // let cid = Cid::new_v1(DAG_CBOR, Blake2b256.digest(&rawdata));
-        // let header = CarHeader {
-        //     roots: vec![cid],
-        //     version: 1,
-        // };
-        // assert_eq!(to_vec(&header).unwrap().len(), 60);
+        let rawdata = to_vec(&TCarGen {
+            name: "ii".into(),
+            data: b"Hush little baby don't say a word".to_vec(),
+        })
+        .unwrap();
+        let buffer: Arc<RwLock<Vec<u8>>> = Default::default();
+        let cid = Cid::new_v1(DAG_CBOR, Blake2b256.digest(&rawdata));
+        let header = CarHeader {
+            roots: vec![cid],
+            version: 1,
+        };
 
-        // let (tx, mut rx) = bounded(10);
+        assert_eq!(to_vec(&header).unwrap().len(), 60);
 
-        // let buffer_cloned = buffer.clone();
-        // let write_task = async_std::task::spawn(async move {
-        //     header
-        //         .write_stream_async(&mut *buffer_cloned.write().await, &mut rx)
-        //         .await
-        //         .unwrap()
-        // });
+        let (tx, mut rx) = bounded(10);
 
-        // tx.send((cid, rawdata.clone())).await.unwrap();
-        // drop(tx);
-        // write_task.await;
+        let buffer_cloned = buffer.clone();
+        let write_task = async_std::task::spawn(async move {
+            header
+                .write_stream_async(&mut *buffer_cloned.write().await, &mut rx)
+                .await
+                .unwrap()
+        });
 
-        // let buffer: Vec<_> = buffer.read().await.clone();
+        tx.send((cid, rawdata.clone())).await.unwrap();
+        drop(tx);
+        write_task.await;
 
-        // let client = reqwest::blocking::Client::new();
-        // let res = client.post("https://api.web3.storage/car")
-        //     .header(reqwest::header::CONTENT_TYPE, "application/vnd.ipld.car")
-        //     .header("Authorization", "Bearer ...")
-        //     .body(buffer)
-        //     .send()
-        //     .unwrap();
-        // dbg!(&res);
-        // dbg!(&res.bytes().unwrap());
+        let buffer: Vec<_> = buffer.read().await.clone();
+
+        let client = reqwest::blocking::Client::new();
+        let res = client
+            .post("https://api.web3.storage/car")
+            .header(reqwest::header::CONTENT_TYPE, "application/vnd.ipld.car")
+            .header("Authorization", "Bearer ...")
+            .body(buffer)
+            .send()
+            .unwrap();
+
+        if res.status().is_success() {
+            eprintln!("upload success");
+        } else {
+            eprintln!("upload failed");
+        }
+        println!("{:?}, expected cid: {}", &res.bytes().unwrap(), cid);
     }
 }

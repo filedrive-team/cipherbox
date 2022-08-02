@@ -5,7 +5,7 @@ impl App {
         let mut dbfile = PathBuf::from(self.app_dir.clone());
         dbfile.push(DB_FILE_NAME);
         let conn = Connection::open(dbfile)?;
-        *self.conn.lock().unwrap() = Some(conn);
+        self.conn = Some(conn);
         Ok(())
     }
     pub fn init_db(&mut self) -> Result<(), Box<dyn std::error::Error>> {
@@ -52,6 +52,7 @@ impl App {
                     id    INTEGER PRIMARY KEY AUTOINCREMENT,
                     box_id INTEGER,
                     obj_id INTEGER,
+                    nonce BLOB,
                     origin_path TEXT,
                     target_path TEXT,
                     status INTEGER,
@@ -72,11 +73,11 @@ impl App {
                 );
                 COMMIT;"#,
         )?;
-        *self.conn.lock().unwrap() = Some(conn);
+        self.conn = Some(conn);
         Ok(())
     }
     pub fn has_connection(&self) -> bool {
-        match *self.conn.lock().unwrap() {
+        match self.conn {
             Some(_) => true,
             None => false,
         }

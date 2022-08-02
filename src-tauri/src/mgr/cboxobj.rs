@@ -6,22 +6,23 @@ impl App {
             return Err(Error::NoDBConnection);
         }
         let mut insert_id = 0i64;
-        if let Some(c) = &*self.conn.lock().unwrap() {
-            c.execute(
-                r#"
-                insert into cbox_obj (box_id, name, path, size, origin_path, obj_type, task_type, create_at, modify_at, nonce, status) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
-            "#,
-                params![par.box_id, par.name, par.path, par.size, par.origin_path, par.obj_type, par.task_type, par.create_at, par.modify_at, par.nonce, par.status],
-            )?;
-            insert_id = c.last_insert_rowid();
-        }
+        let c = self.conn.as_ref().unwrap();
+
+        c.execute(
+            r#"
+            insert into cbox_obj (box_id, name, path, size, origin_path, obj_type, task_type, create_at, modify_at, nonce, status) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+        "#,
+            params![par.box_id, par.name, par.path, par.size, par.origin_path, par.obj_type, par.task_type, par.create_at, par.modify_at, par.nonce, par.status],
+        )?;
+        insert_id = c.last_insert_rowid();
+
         match insert_id {
             0 => Err(Error::Other("sqlite error: failed to get insert id".into())),
             _ => Ok(insert_id),
         }
     }
     pub fn list_cbox_obj(&self) -> Result<Vec<CBoxObj>, Error> {
-        if let Some(c) = &*self.conn.lock().unwrap() {
+        if let Some(c) = &self.conn {
             let mut stmt = c
                 .prepare("SELECT id, box_id, name, path, size, origin_path, obj_type FROM cbox_obj")
                 .unwrap();

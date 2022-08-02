@@ -1,4 +1,5 @@
 use crate::errors::Error;
+use cid::Cid;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -34,13 +35,14 @@ pub struct KVCache {
 
 #[derive(Debug, Default)]
 pub struct App {
-    pub conn: Mutex<Option<Connection>>,
-    pub user_key: Mutex<Option<[u8; 32]>>,
+    pub conn: Option<Connection>,
+    pub user_key: Option<[u8; 32]>,
     pub session_start: u64,
     pub app_dir: OsString,
     pub providers: Vec<Provider>,
-    pub kv_cache: Mutex<KVCache>,
-    pub processing: Arc<AtomicBool>,
+    pub kv_cache: KVCache,
+    pub processing: bool,
+    pub tauri_handle: Option<tauri::AppHandle>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -148,6 +150,8 @@ pub struct CBoxTask {
     // task type - 0 backup task | 1 recover task
     pub task_type: u8,
     pub err: String,
+    #[serde(skip_deserializing)]
+    pub nonce: Vec<u8>,
 }
 
 #[derive(Debug)]
@@ -169,4 +173,41 @@ pub fn current() -> Result<u64, SystemTimeError> {
         Ok(d) => Ok(d.as_secs()),
         Err(e) => Err(e),
     }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ChoreProgress {
+    pub box_id: i64,
+    pub task_id: i64,
+    pub total_size: i64,
+    pub current: i64,
+    pub backup: bool,
+    pub recover: bool,
+    pub err: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct TaskRecord {
+    pub task_id: i64,
+    pub total_size: i64,
+    pub backup: bool,
+    pub recover: bool,
+    pub upload_list: Vec<ChoreUploadRecord>,
+    pub err: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ChoreUploadRecord {
+    pub path: String,
+    pub size: i64,
+    pub chunk_count: i64,
+    pub chunk_uploaded: i64,
+    pub chunks: Vec<Cid>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct Chunks {
+    pub chunk_size: i64,
+    pub chunk_count: i64,
+    pub chunks: Vec<Cid>,
 }

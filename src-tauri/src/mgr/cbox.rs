@@ -1,15 +1,16 @@
 use super::*;
 
 impl App {
-    pub fn set_active_box(&self, box_id: i64) -> Result<CBox, Error> {
+    pub fn set_active_box(&mut self, box_id: i64) -> Result<CBox, Error> {
         let b = self.get_cbox_by_id(box_id)?;
-        let mut mg = self.kv_cache.lock().unwrap();
-        (*mg).active_box_id = box_id;
-        drop(mg);
+        self.kv_cache.active_box_id = box_id;
+        // let mut mg = self.kv_cache.lock().unwrap();
+        // (*mg).active_box_id = box_id;
+        // drop(mg);
         self.flush_cache()?;
         Ok(b)
     }
-    pub fn create_cbox(&self, par: CreateCboxParams) -> Result<CBox, Error> {
+    pub fn create_cbox(&mut self, par: CreateCboxParams) -> Result<CBox, Error> {
         if !self.has_connection() {
             return Err(Error::SessionExpired);
         }
@@ -26,21 +27,20 @@ impl App {
         };
         cbox.create_at = current()?;
         cbox.modify_at = cbox.create_at;
-        let mg = self.conn.lock().unwrap();
-        if let Some(c) = &*mg {
-            c.execute(r#"
+        let c = self.conn.as_ref().unwrap();
+
+        c.execute(r#"
                 insert into cbox (name, encrypt_data, provider, access_token, secret, create_at, modify_at) values (?1, ?2, ?3, ?4, ?5, ?6, ?7)
             "#, params![cbox.name, cbox.encrypt_data, cbox.provider, cbox.access_token, cbox.secret, cbox.create_at, cbox.modify_at])?;
-            let id = c.last_insert_rowid();
-            cbox.id = id;
-            drop(mg);
-            self.set_active_box(cbox.id)?;
-        }
+        let id = c.last_insert_rowid();
+        cbox.id = id;
+
+        self.set_active_box(cbox.id)?;
 
         Ok(cbox)
     }
     fn box_secret(&self) -> Result<Vec<u8>, Error> {
-        match *self.user_key.lock().unwrap() {
+        match self.user_key {
             Some(uk) => {
                 let mut bs = gen_nonce(32);
                 dbg!(&bs);
@@ -54,7 +54,7 @@ impl App {
         }
     }
     pub fn list_cbox(&self) -> Result<Vec<CBox>, Error> {
-        if let Some(c) = &*self.conn.lock().unwrap() {
+        if let Some(c) = &self.conn {
             let mut stmt = c
                 .prepare("SELECT id, name, encrypt_data, provider, access_token FROM cbox")
                 .unwrap();
@@ -79,22 +79,20 @@ impl App {
         }
     }
     pub fn get_cbox_by_id(&self, box_id: i64) -> Result<CBox, Error> {
-        if let Some(c) = &*self.conn.lock().unwrap() {
-            let b = c
-                .query_row(
-                    "SELECT id, name, encrypt_data, provider, access_token FROM cbox where id = ?1",
-                    params![box_id],
-                    |row| {
-                        let mut b = CBox::default();
-                        b.id = row.get(0)?;
-                        b.name = row.get(1)?;
-                        b.encrypt_data = row.get(2)?;
-                        b.provider = row.get(3)?;
-                        b.access_token = row.get(4)?;
-                        Ok(b)
-                    },
-                )
-                .unwrap();
+        if let Some(c) = &self.conn {
+            let b = c.query_row(
+                "SELECT id, name, encrypt_data, provider, access_token FROM cbox where id = ?1",
+                params![box_id],
+                |row| {
+                    let mut b = CBox::default();
+                    b.id = row.get(0)?;
+                    b.name = row.get(1)?;
+                    b.encrypt_data = row.get(2)?;
+                    b.provider = row.get(3)?;
+                    b.access_token = row.get(4)?;
+                    Ok(b)
+                },
+            )?;
 
             Ok(b)
         } else {
