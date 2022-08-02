@@ -13,7 +13,7 @@ use crate::commands::{
     password_verify,
 };
 use crate::mgr::App;
-use async_std::{channel::unbounded, prelude::*};
+use async_std::{channel::bounded, prelude::*};
 use std::{
     fs::create_dir_all,
     sync::{Arc, Mutex},
@@ -22,11 +22,38 @@ use tauri::{Manager, RunEvent};
 
 #[async_std::main]
 async fn main() -> () {
-    let cipherbox_app = Arc::new(Mutex::new(App::default()));
+    // init cipherbox app instance
+    let mut cipherbox_app = App::default();
+    let (tx, mut rx) = bounded(2);
+    cipherbox_app.task_trigger = Some(tx);
+    // wrap app into Arc/Mutex for multipule thread sharing
+    let cipherbox_app = Arc::new(Mutex::new(cipherbox_app));
+    // clone an app instance for tauri setup callback
     let cipherbox_app_clone = cipherbox_app.clone();
+    // spawn a thread
+    // loop for trigger or pause async task
     let hd = async_std::task::spawn(async move {
-        let ca = &*cipherbox_app.lock().unwrap();
-        dbg!(ca);
+        while let Some(_x) = rx.next().await {
+            let mut applock = cipherbox_app.lock().unwrap();
+            let appref = &mut *applock;
+
+            match appref.processing {
+                false => {
+                    appref.processing = true;
+                    drop(applock);
+                    let cloned_app = cipherbox_app.clone();
+                    async_std::task::spawn(async move {
+                        for i in 0..2 {
+                            let mut applock = cloned_app.lock().unwrap();
+                            let appref = &mut *applock;
+
+                            dbg!(i, appref.processing);
+                        }
+                    });
+                }
+                _ => {}
+            }
+        }
     });
     let context = tauri::generate_context!();
     let tauri_app = tauri::Builder::default()
@@ -36,25 +63,19 @@ async fn main() -> () {
             if !&app_dir.exists() {
                 _ = create_dir_all(&app_dir).unwrap();
             }
+
+            let app_dir = app_dir.as_os_str().to_owned();
             {
-                let app_dir = app_dir.as_os_str().to_owned();
-                //let mut cipherboxapp = App::new(app_dir);
                 let cipherboxapp = &mut *cipherbox_app_clone.lock().unwrap();
                 cipherboxapp.setup(app_dir);
                 cipherboxapp.init_db().expect("failed to open sqlite");
                 if let Err(e) = cipherboxapp.read_cache() {
-                    dbg!(e);
+                    eprint!("{}", e);
                 }
-                // let mut app_handle = app.handle();
-                // cipherboxapp.setup_chore_loop(move |cp| {
-                //     app_handle.emit_all("xx", cp);
-                //     Ok(())
-                // });
                 cipherboxapp.tauri_handle = Some(app.handle());
             }
+
             app.manage(cipherbox_app_clone);
-            // setup chore loop - handle backup or recover on one task
-            //let (tx, mut rx) = unbounded();
 
             Ok(())
         })

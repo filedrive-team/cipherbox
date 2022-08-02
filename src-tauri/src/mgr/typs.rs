@@ -16,6 +16,8 @@ pub static DB_FILE_NAME: &str = "cipherbox.db";
 pub static CIPHER_MESSAGE_NAME: &str = "cipher_message";
 pub static KV_FILE_NAME: &str = "cipherbox.kv.toml";
 
+pub enum ControlEvent {}
+
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppInfo {
@@ -43,6 +45,7 @@ pub struct App {
     pub kv_cache: KVCache,
     pub processing: bool,
     pub tauri_handle: Option<tauri::AppHandle>,
+    pub task_trigger: Option<async_std::channel::Sender<isize>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

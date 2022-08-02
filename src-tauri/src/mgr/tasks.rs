@@ -40,12 +40,7 @@ impl App {
         "#,
             params![par.box_id, par.obj_id, par.nonce, par.origin_path, par.target_path, par.task_type, par.create_at, par.modify_at, par.status],
         )?;
-        insert_id = c.last_insert_rowid();
-
-        match insert_id {
-            0 => Err(Error::Other("sqlite error: failed to get insert id".into())),
-            _ => Ok(insert_id),
-        }
+        Ok(c.last_insert_rowid())
     }
     pub fn add_backup_tasks(&self, box_id: i64, targets: Vec<String>) -> Result<(), Error> {
         if !self.has_connection() {

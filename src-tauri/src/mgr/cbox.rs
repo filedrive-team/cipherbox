@@ -58,17 +58,16 @@ impl App {
             let mut stmt = c
                 .prepare("SELECT id, name, encrypt_data, provider, access_token FROM cbox")
                 .unwrap();
-            let box_iter = stmt
-                .query_map([], |row| {
-                    let mut b = CBox::default();
-                    b.id = row.get(0)?;
-                    b.name = row.get(1)?;
-                    b.encrypt_data = row.get(2)?;
-                    b.provider = row.get(3)?;
-                    b.access_token = row.get(4)?;
-                    Ok(b)
-                })
-                .unwrap();
+            let box_iter = stmt.query_map([], |row| {
+                let mut b = CBox::default();
+                b.id = row.get(0)?;
+                b.name = row.get(1)?;
+                b.encrypt_data = row.get(2)?;
+                b.provider = row.get(3)?;
+                b.access_token = row.get(4)?;
+                Ok(b)
+            })?;
+
             let mut list: Vec<CBox> = Vec::new();
             for b in box_iter {
                 list.push(b.unwrap())
