@@ -12,19 +12,137 @@ use crate::commands::{
     app_info, backup, box_create, box_list, box_obj_list, box_set_active, password_set,
     password_verify,
 };
-use crate::mgr::App;
-use async_std::{channel::bounded, prelude::*};
+use crate::{
+    errors::Error,
+    mgr::{init_task_record, spawn_and_log_error, App, ControlEvent, TaskEvent},
+};
+use async_std::{
+    channel::{bounded, unbounded, Receiver, Sender},
+    prelude::*,
+};
+use futures::{select, FutureExt};
 use std::{
+    collections::hash_map::{Entry, HashMap},
     fs::create_dir_all,
     sync::{Arc, Mutex},
 };
 use tauri::{Manager, RunEvent};
 
+async fn task_control_loop(cipherbox_app: Arc<Mutex<App>>, mut rx: Receiver<ControlEvent>) {
+    let concurrent_num = 1;
+    let mut chan_id: i32 = 1;
+    let (relaese_chan_tx, mut release_chan_rx) = bounded(1);
+    let mut channels: HashMap<i32, Sender<ControlEvent>> = HashMap::new();
+
+    loop {
+        select! {
+            event = rx.next().fuse() => match event {
+                Some(event) => {
+                    match event {
+                        ControlEvent::LoopStart => {
+                            let mut applock = cipherbox_app.lock().unwrap();
+                            let appref = &mut *applock;
+
+                            if appref.running_task_num < concurrent_num {
+                                appref.running_task_num += 1;
+                                drop(applock);
+
+                                let (se, re) = bounded(1);
+
+                                match channels.entry(chan_id) {
+                                    Entry::Occupied(..) => {
+                                        eprint!("unexpected occupied entry: {}", chan_id);
+                                    }
+                                    Entry::Vacant(entry) => {
+                                        entry.insert(se.clone());
+                                    }
+                                }
+                                spawn_and_log_error(task_loop(
+                                    cipherbox_app.clone(),
+                                    relaese_chan_tx.clone(),
+                                    chan_id,
+                                    re,
+                                ));
+
+                                chan_id += 1;
+                            }
+                        }
+                        ControlEvent::Resume(task_id) => {
+                            println!("resume {}", task_id);
+                        }
+                        ControlEvent::Pause(task_id) => {
+                            println!("pause {}", task_id);
+                        }
+                        ControlEvent::PauseAll => {
+                            println!("pause all tasks");
+                        }
+                        ControlEvent::Cancel(task_id) => {
+                            println!("cancel {}", task_id);
+                        }
+                    }
+                }
+                None => break
+            },
+            chan_id = release_chan_rx.next().fuse() => match chan_id {
+                Some(chanid) => {
+                    if channels.remove(&chanid).is_none() {
+                        eprint!("relaese chan_id not exist: {}", chanid);
+                    };
+                }
+                None => break
+            }
+        }
+    }
+}
+
+async fn task_loop(
+    cipherbox_app: Arc<Mutex<App>>,
+    tt: Sender<i32>,
+    chan_id: i32,
+    chan: Receiver<ControlEvent>,
+) -> std::result::Result<(), Error> {
+    'Outer: loop {
+        let mut task_err: Option<(i64, Error)> = None;
+        let task = {
+            let applock = cipherbox_app.lock().unwrap();
+            let appref = &*applock;
+            appref.get_pending_task()
+        };
+        match task {
+            Some(task) => match init_task_record(&task) {
+                Ok(mut task_record) => for upload_chore in task_record.upload_list.iter_mut() {},
+                Err(err) => {
+                    task_err = Some((task.id, err));
+                }
+            },
+            None => break 'Outer,
+        }
+        // handle task error
+        match task_err {
+            Some(err) => {
+                let applock = cipherbox_app.lock().unwrap();
+                let appref = &*applock;
+                if let Err(err) = appref.record_task_err(err.0, err.1) {
+                    eprint!("record task err failed: {}", err);
+                }
+            }
+            None => {}
+        }
+    }
+    match tt.send(chan_id).await {
+        Ok(_) => Ok(()),
+        Err(err) => {
+            eprint!("{}", err);
+            Ok(())
+        }
+    }
+}
+
 #[async_std::main]
 async fn main() -> () {
     // init cipherbox app instance
     let mut cipherbox_app = App::default();
-    let (tx, mut rx) = bounded(2);
+    let (tx, rx) = bounded(10);
     cipherbox_app.task_trigger = Some(tx);
     // wrap app into Arc/Mutex for multipule thread sharing
     let cipherbox_app = Arc::new(Mutex::new(cipherbox_app));
@@ -32,29 +150,8 @@ async fn main() -> () {
     let cipherbox_app_clone = cipherbox_app.clone();
     // spawn a thread
     // loop for trigger or pause async task
-    let hd = async_std::task::spawn(async move {
-        while let Some(_x) = rx.next().await {
-            let mut applock = cipherbox_app.lock().unwrap();
-            let appref = &mut *applock;
+    let hd = async_std::task::spawn(task_control_loop(cipherbox_app, rx));
 
-            match appref.processing {
-                false => {
-                    appref.processing = true;
-                    drop(applock);
-                    let cloned_app = cipherbox_app.clone();
-                    async_std::task::spawn(async move {
-                        for i in 0..2 {
-                            let mut applock = cloned_app.lock().unwrap();
-                            let appref = &mut *applock;
-
-                            dbg!(i, appref.processing);
-                        }
-                    });
-                }
-                _ => {}
-            }
-        }
-    });
     let context = tauri::generate_context!();
     let tauri_app = tauri::Builder::default()
         .setup(move |app| {

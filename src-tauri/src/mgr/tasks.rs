@@ -1,5 +1,4 @@
 use super::*;
-use async_std::channel::Sender;
 use tauri::Manager;
 
 impl App {
@@ -20,25 +19,65 @@ impl App {
             }
         }
     }
-    pub async fn trigger_task(&self) {
-        if self.processing {
-            // already in backup task processing
-            // just ignore request
-            return;
+    pub fn get_pending_task(&self) -> Option<CBoxTask> {
+        if let Some(c) = &self.conn {
+            let mut stmt = c
+                .prepare("SELECT id, box_id, nonce, origin_path, target_path, task_type FROM cbox_task order by id limit 1")
+                .unwrap();
+            let box_iter = match stmt.query_map([], |row| {
+                let mut b = CBoxTask::default();
+                b.id = row.get(0)?;
+                b.box_id = row.get(1)?;
+                b.nonce = row.get(2)?;
+                b.origin_path = row.get(3)?;
+                b.target_path = row.get(4)?;
+                b.task_type = row.get(5)?;
+                Ok(b)
+            }) {
+                Ok(item) => item,
+                Err(_) => return None,
+            };
+
+            let mut list: Vec<CBoxTask> = Vec::new();
+            for b in box_iter {
+                if let Ok(record) = b {
+                    list.push(record);
+                }
+            }
+            if list.len() == 0 {
+                None
+            } else {
+                Some(list.remove(0))
+            }
+        } else {
+            None
         }
-        // get pending task record from table CBoxObj
+    }
+    pub fn record_task_err(&self, id: i64, err: Error) -> Result<(), Error> {
+        if !self.has_connection() {
+            return Err(Error::NoDBConnection);
+        }
+
+        let c = self.conn.as_ref().unwrap();
+        c.execute(
+            r#"
+            update cbox_task set status = ?1, err = ?2 where id = ?3
+        "#,
+            params![9, err.to_string(), id],
+        )?;
+        Ok(())
     }
     pub fn create_cbox_task(&self, par: &CBoxTask) -> Result<i64, Error> {
         if !self.has_connection() {
             return Err(Error::NoDBConnection);
         }
-        let mut insert_id = 0i64;
+
         let c = self.conn.as_ref().unwrap();
         c.execute(
             r#"
-            insert into cbox_task (box_id, obj_id, nonce, origin_path, target_path, task_type, create_at, modify_at, status) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+            insert into cbox_task (box_id, nonce, origin_path, target_path, task_type, create_at, modify_at, status) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
         "#,
-            params![par.box_id, par.obj_id, par.nonce, par.origin_path, par.target_path, par.task_type, par.create_at, par.modify_at, par.status],
+            params![par.box_id, par.nonce, par.origin_path, par.target_path, par.task_type, par.create_at, par.modify_at, par.status],
         )?;
         Ok(c.last_insert_rowid())
     }
@@ -80,10 +119,14 @@ impl App {
 
         // TODO:
         // trigger async backup or recover task
-        // async_std::task::spawn(async move {
-        //     self.trigger_task();
-        // });
-
+        if let Some(s) = &self.task_trigger {
+            match async_std::task::block_on(s.send(ControlEvent::LoopStart)) {
+                Ok(_) => {}
+                Err(e) => {
+                    eprintln!("failed to send LoopStart message: {}", e);
+                }
+            }
+        }
         Ok(())
     }
 }

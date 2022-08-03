@@ -1,44 +1,45 @@
 [package]
-name = "app"
-version = "0.1.0"
-description = "A Tauri App"
 authors = ["you"]
-license = ""
-repository = ""
 default-run = "app"
+description = "A Tauri App"
 edition = "2021"
+license = ""
+name = "app"
+repository = ""
 rust-version = "1.57"
+version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-tauri-build = { version = "1.0.2", features = [] }
+tauri-build = {version = "1.0.2", features = []}
 
 [dependencies]
-serde_json = "1.0"
-serde = { version = "1.0", features = ["derive"] }
-tauri = { version = "1.0.2", features = ["api-all", "macos-private-api"] }
-rust-crypto = "0.2.36"
 anyhow = "1.0.58"
-thiserror = "1.0"
-rusqlite = { version = "0.27.0", features = ["bundled"] }
-rand = "0.8.5"
-rustc-serialize = "0.3.24"
-serde_cbor = "0.11.2"
-fvm_ipld_car = "0.4.1"
+async-std = {version = "1.12.0", features = ["attributes"]}
 cid = "0.8.5"
-fvm_ipld_encoding = "0.2.2"
-async-std = { version = "1.12.0", features = ["attributes"] }
+futures = "0.3.21"
 fvm_ipld_blockstore = "0.1.1"
-reqwest = { version = "^0.11", features = ["blocking", "json"] }
+fvm_ipld_car = "0.4.1"
+fvm_ipld_encoding = "0.2.2"
 http = "0.2.8"
+rand = "0.8.5"
+reqwest = {version = "^0.11", features = ["blocking", "json"]}
+rusqlite = {version = "0.27.0", features = ["bundled"]}
+rust-crypto = "0.2.36"
+rustc-serialize = "0.3.24"
+serde = {version = "1.0", features = ["derive"]}
+serde_cbor = "0.11.2"
+serde_json = "1.0"
+tauri = {version = "1.0.2", features = ["api-all", "macos-private-api"]}
+thiserror = "1.0"
 tiny_http = "0.11.0"
 toml = "0.5.9"
 
 [features]
 # by default Tauri runs in production mode
 # when `tauri dev` runs it is executed with `cargo run --no-default-features` if `devPath` is an URL
-default = [ "custom-protocol" ]
+default = ["custom-protocol"]
 # this feature is used used for production builds where `devPath` points to the filesystem
 # DO NOT remove this
-custom-protocol = [ "tauri/custom-protocol" ]
+custom-protocol = ["tauri/custom-protocol"]

@@ -1,13 +1,10 @@
 use crate::errors::Error;
+use async_std::channel::Sender;
 use cid::Cid;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::{
     ffi::OsString,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
-    },
     time::{SystemTime, SystemTimeError},
 };
 
@@ -16,7 +13,20 @@ pub static DB_FILE_NAME: &str = "cipherbox.db";
 pub static CIPHER_MESSAGE_NAME: &str = "cipher_message";
 pub static KV_FILE_NAME: &str = "cipherbox.kv.toml";
 
-pub enum ControlEvent {}
+#[derive(Debug)]
+pub enum ControlEvent {
+    LoopStart,
+    Resume(i64),
+    Pause(i64),
+    PauseAll,
+    Cancel(i64),
+}
+
+#[derive(Debug)]
+pub enum TaskEvent {
+    Start { id: i64, tx: Sender<i32> },
+    Finish(i64),
+}
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -43,9 +53,9 @@ pub struct App {
     pub app_dir: OsString,
     pub providers: Vec<Provider>,
     pub kv_cache: KVCache,
-    pub processing: bool,
     pub tauri_handle: Option<tauri::AppHandle>,
-    pub task_trigger: Option<async_std::channel::Sender<isize>>,
+    pub task_trigger: Option<async_std::channel::Sender<ControlEvent>>,
+    pub running_task_num: i32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -141,7 +151,6 @@ pub struct CBoxObj {
 pub struct CBoxTask {
     pub id: i64,
     pub box_id: i64,
-    pub obj_id: i64,
     // path of file in host file system
     pub origin_path: String,
     // target path to do recover
@@ -182,8 +191,8 @@ pub fn current() -> Result<u64, SystemTimeError> {
 pub struct ChoreProgress {
     pub box_id: i64,
     pub task_id: i64,
-    pub total_size: i64,
-    pub current: i64,
+    pub total_size: u64,
+    pub current: u64,
     pub backup: bool,
     pub recover: bool,
     pub err: String,
@@ -192,25 +201,25 @@ pub struct ChoreProgress {
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct TaskRecord {
     pub task_id: i64,
-    pub total_size: i64,
+    pub total_size: u64,
     pub backup: bool,
     pub recover: bool,
     pub upload_list: Vec<ChoreUploadRecord>,
-    pub err: String,
+    pub err: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ChoreUploadRecord {
     pub path: String,
-    pub size: i64,
-    pub chunk_count: i64,
-    pub chunk_uploaded: i64,
+    pub size: u64,
+    pub chunk_count: u64,
+    pub chunk_uploaded: u64,
     pub chunks: Vec<Cid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Chunks {
-    pub chunk_size: i64,
-    pub chunk_count: i64,
+    pub chunk_size: u64,
+    pub chunk_count: u64,
     pub chunks: Vec<Cid>,
 }

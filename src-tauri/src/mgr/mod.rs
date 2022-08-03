@@ -3,11 +3,8 @@ use rusqlite::{params, Connection};
 use std::{
     ffi::OsString,
     fs::{read, write},
+    future::Future,
     path::PathBuf,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
-    },
 };
 
 mod cbox;
@@ -19,6 +16,46 @@ mod userkey;
 pub use typs::*;
 //pub use userkey::*;
 
+pub fn init_task_record(task: &CBoxTask) -> Result<TaskRecord, Error> {
+    if task.task_type != 0 {
+        return Err(Error::Other("current only support backup task".into()));
+    }
+    let meta = std::fs::metadata(&task.origin_path)?;
+    if meta.is_dir() {
+        return Err(Error::Other("dir backup task not supported".into()));
+    };
+    let fsize = meta.len();
+    if fsize == 0 {
+        return Err(Error::Other("zero file size".into()));
+    }
+    let chunck_count = (fsize - 1) / CHUNK_SIZE + 1;
+    Ok(TaskRecord {
+        task_id: task.id,
+        backup: true,
+        recover: false,
+        total_size: fsize,
+        upload_list: vec![ChoreUploadRecord {
+            path: task.origin_path.clone(),
+            size: fsize,
+            chunk_count: chunck_count,
+            chunk_uploaded: 0,
+            chunks: Vec::new(),
+        }],
+        err: None,
+    })
+}
+
+pub fn spawn_and_log_error<F>(fut: F) -> async_std::task::JoinHandle<()>
+where
+    F: Future<Output = std::result::Result<(), Error>> + Send + 'static,
+{
+    async_std::task::spawn(async move {
+        if let Err(e) = fut.await {
+            eprintln!("{}", e)
+        }
+    })
+}
+
 impl App {
     pub fn setup(&mut self, app_dir: OsString) {
         self.app_dir = app_dir;
@@ -28,7 +65,6 @@ impl App {
             put_api: "{}://api.web3.storage/{}".into(),
             get_api: "{}://dweb.link/ipfs/{}?{}".into(),
         }];
-        self.processing = false;
     }
     pub fn app_info(&self) -> AppInfo {
         let mut info = AppInfo::default();
