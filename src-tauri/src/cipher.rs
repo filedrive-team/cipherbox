@@ -63,7 +63,7 @@ pub(crate) fn verify_password(password: String, path_to_save: PathBuf) -> Result
 //     Ok(())
 // }
 
-fn encrypt_or_decrypt(source: &[u8], output: &mut [u8], key: &[u8], nonce: &[u8]) {
+pub fn encrypt_or_decrypt(source: &[u8], output: &mut [u8], key: &[u8], nonce: &[u8]) {
     let mut cipher = chacha20::ChaCha20::new(key, nonce);
     cipher.process(source, output);
 }

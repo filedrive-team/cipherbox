@@ -13,14 +13,18 @@ use crate::commands::{
     password_verify,
 };
 use crate::{
+    cipher::encrypt_or_decrypt,
     errors::Error,
-    mgr::{init_task_record, spawn_and_log_error, App, ControlEvent, TaskEvent},
+    mgr::{
+        init_task_record, spawn_and_log_error, web3storage_upload, App, ControlEvent, TaskEvent,
+    },
 };
 use async_std::{
     channel::{bounded, unbounded, Receiver, Sender},
     prelude::*,
 };
 use futures::{select, FutureExt};
+use std::io::Read;
 use std::{
     collections::hash_map::{Entry, HashMap},
     fs::create_dir_all,
@@ -99,7 +103,7 @@ async fn task_loop(
     cipherbox_app: Arc<Mutex<App>>,
     tt: Sender<i32>,
     chan_id: i32,
-    chan: Receiver<ControlEvent>,
+    mut chan: Receiver<ControlEvent>,
 ) -> std::result::Result<(), Error> {
     'Outer: loop {
         let mut task_err: Option<(i64, Error)> = None;
@@ -110,7 +114,82 @@ async fn task_loop(
         };
         match task {
             Some(task) => match init_task_record(&task) {
-                Ok(mut task_record) => for upload_chore in task_record.upload_list.iter_mut() {},
+                Ok(mut task_record) => {
+                    for upload_chore in task_record.upload_list.iter_mut() {
+                        // try to open file
+                        let mut fd = match async_std::fs::File::open(&upload_chore.path).await {
+                            Ok(fd) => fd,
+                            Err(err) => {
+                                eprint!(
+                                    "upload chore, failed to open file: {} {}",
+                                    &upload_chore.path, err
+                                );
+                                break;
+                            }
+                        };
+                        let mut buffer = vec![0u8; mgr::CHUNK_SIZE];
+                        // try to receive control event
+                        select! {
+                            ev = chan.next().fuse() => match ev {
+                                Some(ev) => match ev {
+                                        ControlEvent::Pause(id) => {
+                                            if id == task.id {
+                                                break 'Outer;
+                                            }
+                                        }
+                                        ControlEvent::PauseAll => {
+                                            break 'Outer;
+                                        }
+                                        ControlEvent::Cancel(id) => {
+                                            if id == task.id {
+                                                break 'Outer;
+                                            }
+                                        }
+                                        _ => {}
+                                },
+                                None => {
+                                    break 'Outer;
+                                }
+                            },
+                            n = read_full(&mut fd, &mut buffer).fuse() => match n {
+                                Ok(0) => {
+                                    break;
+                                },
+                                Ok(n) => {
+                                    let encrypted_data = {
+                                        let applock = cipherbox_app.lock().unwrap();
+                                        let appref = &*applock;
+                                        let key = appref.user_key.as_ref();
+
+                                        if key.is_none() {
+                                            eprint!("unexpected user key is none");
+                                            task_err = Some((task_record.task_id, Error::Other("unexpected user key is none".into())));
+                                            break;
+                                        }
+                                        let mut d = vec![0u8;n];
+                                        encrypt_or_decrypt(&buffer[..n], &mut d, key.unwrap(), &task.nonce);
+                                        d
+                                    };
+
+                                    match web3storage_upload(encrypted_data).await {
+                                        Ok(cid) => {
+                                            upload_chore.chunk_uploaded += 1;
+                                            upload_chore.chunks.push(cid);
+                                        },
+                                        Err(err) =>  {
+                                            task_err = Some((task_record.task_id, err));
+                                            break;
+                                        }
+                                    };
+
+                                },
+                                Err(err) => {
+                                    eprint!("{}", err);
+                                }
+                            }
+                        }
+                    }
+                }
                 Err(err) => {
                     task_err = Some((task.id, err));
                 }
@@ -136,6 +215,26 @@ async fn task_loop(
             Ok(())
         }
     }
+}
+
+async fn read_full(
+    f: &mut async_std::fs::File,
+    mut bs: &mut [u8],
+) -> Result<usize, std::io::Error> {
+    let mut readed = 0usize;
+    while !bs.is_empty() {
+        match f.read(bs).await {
+            Ok(0) => break,
+            Ok(n) => {
+                let tmp = bs;
+                bs = &mut tmp[n..];
+                readed += n;
+            }
+            Err(e) => return Err(e),
+        }
+    }
+
+    Ok(readed)
 }
 
 #[async_std::main]

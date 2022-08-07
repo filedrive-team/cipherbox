@@ -8,7 +8,7 @@ use std::{
     time::{SystemTime, SystemTimeError},
 };
 
-pub const CHUNK_SIZE: u64 = 1048576;
+pub const CHUNK_SIZE: usize = 1048576;
 pub static DB_FILE_NAME: &str = "cipherbox.db";
 pub static CIPHER_MESSAGE_NAME: &str = "cipher_message";
 pub static KV_FILE_NAME: &str = "cipherbox.kv.toml";
@@ -222,4 +222,9 @@ pub struct Chunks {
     pub chunk_size: u64,
     pub chunk_count: u64,
     pub chunks: Vec<Cid>,
+}
+
+#[derive(Serialize)]
+pub struct RawBlock {
+    pub data: Vec<u8>,
 }

@@ -1,5 +1,16 @@
 use crate::{cipher::gen_nonce, errors::Error};
+use async_std::channel::bounded;
+use async_std::io::Cursor;
+use async_std::sync::RwLock;
+use cid::{
+    multihash::{Code::Blake2b256, MultihashDigest},
+    Cid,
+};
+use fvm_ipld_blockstore::{Blockstore, MemoryBlockstore};
+use fvm_ipld_car::{load_car, Block, CarHeader, CarReader};
+use fvm_ipld_encoding::{from_slice, to_vec, DAG_CBOR};
 use rusqlite::{params, Connection};
+use std::sync::Arc;
 use std::{
     ffi::OsString,
     fs::{read, write},
@@ -16,6 +27,51 @@ mod userkey;
 pub use typs::*;
 //pub use userkey::*;
 
+pub async fn web3storage_upload(data: Vec<u8>) -> Result<Cid, Error> {
+    let rawdata = to_vec(&RawBlock { data }).unwrap();
+    let buffer: Arc<RwLock<Vec<u8>>> = Default::default();
+    let cid = Cid::new_v1(DAG_CBOR, Blake2b256.digest(&rawdata));
+    let header = CarHeader {
+        roots: vec![cid],
+        version: 1,
+    };
+
+    assert_eq!(to_vec(&header).unwrap().len(), 60);
+
+    let (tx, mut rx) = bounded(10);
+
+    let buffer_cloned = buffer.clone();
+    let write_task = async_std::task::spawn(async move {
+        header
+            .write_stream_async(&mut *buffer_cloned.write().await, &mut rx)
+            .await
+            .unwrap()
+    });
+
+    tx.send((cid, rawdata.clone())).await.unwrap();
+    drop(tx);
+    write_task.await;
+
+    // let buffer: Vec<_> = buffer.read().await.clone();
+
+    // let client = reqwest::blocking::Client::new();
+    // let res = client
+    //     .post("https://api.web3.storage/car")
+    //     .header(reqwest::header::CONTENT_TYPE, "application/vnd.ipld.car")
+    //     .header("Authorization", "Bearer ...")
+    //     .body(buffer)
+    //     .send()
+    //     .unwrap();
+
+    // if !res.status().is_success() {
+    //     eprintln!("upload failed");
+    //     return Err(Error::Other(format!("{:?}", &res.bytes().unwrap())));
+    // }
+    // eprintln!("upload success");
+    // println!("{:?}, expected cid: {}", &res.bytes().unwrap(), cid);
+    Ok(cid)
+}
+
 pub fn init_task_record(task: &CBoxTask) -> Result<TaskRecord, Error> {
     if task.task_type != 0 {
         return Err(Error::Other("current only support backup task".into()));
@@ -28,7 +84,7 @@ pub fn init_task_record(task: &CBoxTask) -> Result<TaskRecord, Error> {
     if fsize == 0 {
         return Err(Error::Other("zero file size".into()));
     }
-    let chunck_count = (fsize - 1) / CHUNK_SIZE + 1;
+    let chunck_count = (fsize - 1) / (CHUNK_SIZE as u64) + 1;
     Ok(TaskRecord {
         task_id: task.id,
         backup: true,
@@ -168,18 +224,6 @@ mod test {
         dbg!(objlist_json);
     }
 
-    use async_std::channel::bounded;
-    use async_std::io::Cursor;
-    use async_std::sync::RwLock;
-    use cid::{
-        multihash::{Code::Blake2b256, MultihashDigest},
-        Cid,
-    };
-    use fvm_ipld_blockstore::{Blockstore, MemoryBlockstore};
-    use fvm_ipld_car::{load_car, Block, CarHeader, CarReader};
-    use fvm_ipld_encoding::{from_slice, to_vec, DAG_CBOR};
-    use std::sync::Arc;
-
     #[test]
     fn test_car_head() {
         let cid = Cid::new_v1(DAG_CBOR, Blake2b256.digest(b"test"));
@@ -245,17 +289,10 @@ mod test {
         // dbg!(&res);
         // dbg!(&res.bytes().unwrap());
     }
-    use serde::Serialize;
 
-    #[derive(Serialize)]
-    pub struct TCarGen {
-        pub name: String,
-        pub data: Vec<u8>,
-    }
     #[async_std::test]
     async fn test_upload_car() {
-        let rawdata = to_vec(&TCarGen {
-            name: "ii".into(),
+        let rawdata = to_vec(&RawBlock {
             data: b"Hush little baby don't say a word".to_vec(),
         })
         .unwrap();
