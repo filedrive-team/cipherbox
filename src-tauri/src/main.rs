@@ -31,7 +31,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tauri::{Manager, RunEvent};
-
+use tauri_plugin_fs_extra::FsExtra;
 async fn task_control_loop(cipherbox_app: Arc<Mutex<App>>, mut rx: Receiver<ControlEvent>) {
     let concurrent_num = 1;
     let mut chan_id: i32 = 1;
@@ -360,6 +360,7 @@ async fn main() -> () {
 
     let context = tauri::generate_context!();
     let tauri_app = tauri::Builder::default()
+        .plugin(FsExtra::default())
         .setup(move |app| {
             let app_dir = app.path_resolver().app_dir().unwrap();
 
