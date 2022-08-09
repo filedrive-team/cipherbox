@@ -27,7 +27,7 @@ mod userkey;
 pub use typs::*;
 //pub use userkey::*;
 
-pub async fn web3storage_upload(data: Vec<u8>) -> Result<Cid, Error> {
+pub async fn web3storage_upload(data: Vec<u8>, cbox: &CBox) -> Result<Cid, Error> {
     let rawdata = to_vec(&RawBlock { data }).unwrap();
     let buffer: Arc<RwLock<Vec<u8>>> = Default::default();
     let cid = Cid::new_v1(DAG_CBOR, Blake2b256.digest(&rawdata));
@@ -52,23 +52,23 @@ pub async fn web3storage_upload(data: Vec<u8>) -> Result<Cid, Error> {
     drop(tx);
     write_task.await;
 
-    // let buffer: Vec<_> = buffer.read().await.clone();
+    let buffer: Vec<_> = buffer.read().await.clone();
 
-    // let client = reqwest::blocking::Client::new();
-    // let res = client
-    //     .post("https://api.web3.storage/car")
-    //     .header(reqwest::header::CONTENT_TYPE, "application/vnd.ipld.car")
-    //     .header("Authorization", "Bearer ...")
-    //     .body(buffer)
-    //     .send()
-    //     .unwrap();
+    let client = reqwest::blocking::Client::new();
+    let res = client
+        .post("https://api.web3.storage/car")
+        .header(reqwest::header::CONTENT_TYPE, "application/vnd.ipld.car")
+        .header("Authorization", format!("Bearer {}", &cbox.access_token))
+        .body(buffer)
+        .send()
+        .unwrap();
 
-    // if !res.status().is_success() {
-    //     eprintln!("upload failed");
-    //     return Err(Error::Other(format!("{:?}", &res.bytes().unwrap())));
-    // }
-    // eprintln!("upload success");
-    // println!("{:?}, expected cid: {}", &res.bytes().unwrap(), cid);
+    if !res.status().is_success() {
+        eprintln!("upload failed");
+        return Err(Error::Other(format!("{:?}", &res.bytes().unwrap())));
+    }
+    eprintln!("upload success");
+    println!("{:?}, expected cid: {}", &res.bytes().unwrap(), cid);
     Ok(cid)
 }
 

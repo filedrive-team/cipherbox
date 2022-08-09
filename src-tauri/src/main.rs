@@ -115,6 +115,20 @@ async fn task_loop(
         match task {
             Some(task) => match init_task_record(&task) {
                 Ok(mut task_record) => {
+                    let cbox = {
+                        let applock = cipherbox_app.lock().unwrap();
+                        let appref = &*applock;
+                        match appref.get_cbox_by_id(task.box_id) {
+                            Ok(cbox) => cbox,
+                            Err(err) => {
+                                task_err = Some((
+                                    task_record.task_id,
+                                    Error::Other("failed to get cbox when doing task".into()),
+                                ));
+                                break 'Outer;
+                            }
+                        }
+                    };
                     for upload_chore in task_record.upload_list.iter_mut() {
                         // try to open file
                         let mut fd = match async_std::fs::File::open(&upload_chore.path).await {
@@ -172,7 +186,7 @@ async fn task_loop(
                                             d
                                         };
 
-                                        match web3storage_upload(encrypted_data).await {
+                                        match web3storage_upload(encrypted_data, &cbox).await {
                                             Ok(cid) => {
                                                 upload_chore.chunk_uploaded += 1;
                                                 upload_chore.chunks.push(cid);
@@ -203,7 +217,7 @@ async fn task_loop(
                                 break 'Outer;
                             }
                         };
-                        match web3storage_upload(crdata).await {
+                        match web3storage_upload(crdata, &cbox).await {
                             Ok(cid) => {
                                 upload_chore.chunks_ref = cid.to_string();
                             }
