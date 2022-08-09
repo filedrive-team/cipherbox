@@ -15,15 +15,15 @@ use crate::commands::{
 use crate::{
     cipher::encrypt_or_decrypt,
     errors::Error,
-    mgr::{
-        init_task_record, spawn_and_log_error, web3storage_upload, App, ControlEvent, TaskEvent,
-    },
+    mgr::{init_task_record, spawn_and_log_error, web3storage_upload, App, Chunks, ControlEvent},
 };
 use async_std::{
     channel::{bounded, unbounded, Receiver, Sender},
     prelude::*,
 };
 use futures::{select, FutureExt};
+use fvm_ipld_encoding::to_vec;
+use mgr::{current, CBoxObj};
 use std::io::Read;
 use std::{
     collections::hash_map::{Entry, HashMap},
@@ -128,67 +128,160 @@ async fn task_loop(
                             }
                         };
                         let mut buffer = vec![0u8; mgr::CHUNK_SIZE];
-                        // try to receive control event
-                        select! {
-                            ev = chan.next().fuse() => match ev {
-                                Some(ev) => match ev {
-                                        ControlEvent::Pause(id) => {
-                                            if id == task.id {
+                        loop {
+                            // try to receive control event
+                            select! {
+                                ev = chan.next().fuse() => match ev {
+                                    Some(ev) => match ev {
+                                            ControlEvent::Pause(id) => {
+                                                if id == task.id {
+                                                    break 'Outer;
+                                                }
+                                            }
+                                            ControlEvent::PauseAll => {
                                                 break 'Outer;
                                             }
-                                        }
-                                        ControlEvent::PauseAll => {
-                                            break 'Outer;
-                                        }
-                                        ControlEvent::Cancel(id) => {
-                                            if id == task.id {
+                                            ControlEvent::Cancel(id) => {
+                                                if id == task.id {
+                                                    break 'Outer;
+                                                }
+                                            }
+                                            _ => {}
+                                    },
+                                    None => {
+                                        break 'Outer;
+                                    }
+                                },
+                                n = read_full(&mut fd, &mut buffer).fuse() => match n {
+                                    Ok(0) => {
+                                        break;
+                                    },
+                                    Ok(n) => {
+                                        let encrypted_data = {
+                                            let applock = cipherbox_app.lock().unwrap();
+                                            let appref = &*applock;
+                                            let key = appref.user_key.as_ref();
+
+                                            if key.is_none() {
+                                                eprint!("unexpected user key is none");
+                                                task_err = Some((task_record.task_id, Error::Other("unexpected user key is none".into())));
+                                                break;
+                                            }
+                                            let mut d = vec![0u8;n];
+                                            encrypt_or_decrypt(&buffer[..n], &mut d, key.unwrap(), &task.nonce);
+                                            d
+                                        };
+
+                                        match web3storage_upload(encrypted_data).await {
+                                            Ok(cid) => {
+                                                upload_chore.chunk_uploaded += 1;
+                                                upload_chore.chunks.push(cid);
+                                            },
+                                            Err(err) =>  {
+                                                task_err = Some((task_record.task_id, err));
                                                 break 'Outer;
                                             }
-                                        }
-                                        _ => {}
-                                },
-                                None => {
-                                    break 'Outer;
-                                }
-                            },
-                            n = read_full(&mut fd, &mut buffer).fuse() => match n {
-                                Ok(0) => {
-                                    break;
-                                },
-                                Ok(n) => {
-                                    let encrypted_data = {
-                                        let applock = cipherbox_app.lock().unwrap();
-                                        let appref = &*applock;
-                                        let key = appref.user_key.as_ref();
+                                        };
 
-                                        if key.is_none() {
-                                            eprint!("unexpected user key is none");
-                                            task_err = Some((task_record.task_id, Error::Other("unexpected user key is none".into())));
-                                            break;
-                                        }
-                                        let mut d = vec![0u8;n];
-                                        encrypt_or_decrypt(&buffer[..n], &mut d, key.unwrap(), &task.nonce);
-                                        d
-                                    };
-
-                                    match web3storage_upload(encrypted_data).await {
-                                        Ok(cid) => {
-                                            upload_chore.chunk_uploaded += 1;
-                                            upload_chore.chunks.push(cid);
-                                        },
-                                        Err(err) =>  {
-                                            task_err = Some((task_record.task_id, err));
-                                            break;
-                                        }
-                                    };
-
-                                },
-                                Err(err) => {
-                                    eprint!("{}", err);
+                                    },
+                                    Err(err) => {
+                                        eprint!("{}", err);
+                                    }
                                 }
                             }
                         }
+                        let mut chunks_ref = Chunks::default();
+                        chunks_ref.chunk_size = mgr::CHUNK_SIZE as u64;
+                        chunks_ref.chunk_count = upload_chore.chunk_uploaded;
+                        for cid in upload_chore.chunks.iter() {
+                            chunks_ref.chunks.push(cid.clone());
+                        }
+                        let crdata = match to_vec(&chunks_ref) {
+                            Ok(d) => d,
+                            Err(err) => {
+                                task_err = Some((task_record.task_id, Error::from(err)));
+                                break 'Outer;
+                            }
+                        };
+                        match web3storage_upload(crdata).await {
+                            Ok(cid) => {
+                                upload_chore.chunks_ref = cid.to_string();
+                            }
+                            Err(err) => {
+                                task_err = Some((task_record.task_id, err));
+                                break 'Outer;
+                            }
+                        };
                     }
+                    let applock = cipherbox_app.lock().unwrap();
+                    let appref = &*applock;
+                    // save a finished task to db
+                    if task.task_type == 0 {
+                        // save record for backup task
+                        let tpath = std::path::PathBuf::from(&task.origin_path);
+
+                        for chore in task_record.upload_list.iter() {
+                            let chore_path = std::path::PathBuf::from(&chore.path);
+                            // insert cbox_obj
+                            let mut cbo = CBoxObj::default();
+                            cbo.box_id = task.box_id;
+                            cbo.cid = chore.chunks_ref.clone();
+                            cbo.create_at = match current() {
+                                Ok(t) => t,
+                                Err(err) => {
+                                    eprintln!("{}", err);
+                                    0
+                                }
+                            };
+                            cbo.modify_at = cbo.create_at;
+                            cbo.nonce = task.nonce.clone();
+                            cbo.obj_type = 0;
+                            cbo.origin_path = chore.path.clone();
+                            let filename = match chore_path.file_name() {
+                                Some(name) => match name.to_str() {
+                                    Some(name) => name.to_string(),
+                                    None => String::new(),
+                                },
+                                None => String::new(),
+                            };
+                            cbo.name = filename.clone();
+                            cbo.path = match chore_path.strip_prefix(&tpath) {
+                                Ok(p) => match p.to_str() {
+                                    Some(p) => p.to_string(),
+                                    None => String::new(),
+                                },
+                                Err(_) => String::new(),
+                            };
+                            cbo.cid = chore.chunks_ref.clone();
+                            cbo.size = chore.size;
+                            appref.create_cbox_obj(&cbo).unwrap();
+                            // TODO
+                            // dealing with hierarchical parent node
+                            //
+                            // if &cbo.name != &cbo.path {
+                            //     let p1 = std::path::PathBuf::from(&cbo.path);
+                            //     let parent_path = match p1.parent() {
+                            //         Some(p) => match p.to_str() {
+                            //             Some(p) => p.to_string(),
+                            //             None => String::new(),
+                            //         },
+                            //         None => String::new(),
+                            //     };
+                            //     if !parent_path.is_empty() {
+                            //         match appref.get_cbox_obj(task.box_id, &parent_path) {
+                            //             Some(obj) => {
+                            //                 cbo.parent_id = obj.id;
+                            //             }
+                            //             None => {
+                            //                 let mut cbox_obj = CBoxObj::default();
+                            //                 cbox_obj.box_id = task.box_id;
+                            //             }
+                            //         }
+                            //     }
+                            // }
+                        }
+                    }
+                    // update task record - set status finished
                 }
                 Err(err) => {
                     task_err = Some((task.id, err));

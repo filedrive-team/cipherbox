@@ -1,5 +1,4 @@
 use crate::errors::Error;
-use async_std::channel::Sender;
 use cid::Cid;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
@@ -20,12 +19,6 @@ pub enum ControlEvent {
     Pause(i64),
     PauseAll,
     Cancel(i64),
-}
-
-#[derive(Debug)]
-pub enum TaskEvent {
-    Start { id: i64, tx: Sender<i32> },
-    Finish(i64),
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -134,16 +127,16 @@ pub struct CBoxObj {
     pub path: String,
     // path of file in host file system
     pub origin_path: String,
-    // backup status - 0 in queue | 1 uploading | 2 uploaded | 3 finished | 9 failed
-    pub status: u8,
+    // // backup status - 0 in queue | 1 uploading | 2 uploaded | 3 finished | 9 failed
+    // pub status: u8,
     // object type - 0 file | 1 directory
     pub obj_type: u8,
     pub create_at: u64,
     pub modify_at: u64,
     pub parent_id: i64,
-    // task type - 0 single task | 1 parent task (has children tasks) | 2 child task
-    pub task_type: u8,
-    pub err: String,
+    // // task type - 0 single task | 1 parent task (has children tasks) | 2 child task
+    // pub task_type: u8,
+    // pub err: String,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -215,6 +208,7 @@ pub struct ChoreUploadRecord {
     pub chunk_count: u64,
     pub chunk_uploaded: u64,
     pub chunks: Vec<Cid>,
+    pub chunks_ref: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]

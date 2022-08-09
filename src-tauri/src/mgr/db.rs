@@ -40,14 +40,12 @@ impl App {
                     name TEXT,
                     path TEXT,
                     origin_path TEXT,
-                    status INTEGER,
                     obj_type INTEGER,
                     create_at INTEGER,
                     modify_at INTEGER,
-                    parent_id INTEGER,
-                    task_type INTEGER,
-                    err TEXT
+                    parent_id INTEGER
                 );
+                CREATE UNIQUE INDEX IF NOT EXISTS index_cbox_obj_path ON cbox_obj (box_id, path);
                 CREATE TABLE IF NOT EXISTS cbox_task (
                     id    INTEGER PRIMARY KEY AUTOINCREMENT,
                     box_id INTEGER,

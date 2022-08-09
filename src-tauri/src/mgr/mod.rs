@@ -96,6 +96,7 @@ pub fn init_task_record(task: &CBoxTask) -> Result<TaskRecord, Error> {
             chunk_count: chunck_count,
             chunk_uploaded: 0,
             chunks: Vec::new(),
+            chunks_ref: String::new(),
         }],
         err: None,
     })

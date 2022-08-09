@@ -29,6 +29,12 @@ impl Serialize for Error {
     }
 }
 
+impl From<fvm_ipld_encoding::Error> for Error {
+    fn from(err: fvm_ipld_encoding::Error) -> Error {
+        Error::Other(err.to_string())
+    }
+}
+
 impl From<cid::Error> for Error {
     fn from(err: cid::Error) -> Error {
         Error::Other(err.to_string())
