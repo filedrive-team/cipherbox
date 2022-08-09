@@ -50,6 +50,29 @@ const columns = [
     dataIndex: 'createAt',
     key: 'createAt',
   },
+  {
+    title: '操作',
+    dataIndex: 'operate',
+    key: 'operate',
+    render: (_, value) => {
+      if (value.exists) {
+        return (
+          <div
+            onClick={async () => {
+              await new shell.Command('show-in-finder', [
+                '-R',
+                value.originPath,
+              ]).spawn();
+            }}
+          >
+            <OpenIcon />
+          </div>
+        );
+      } else {
+      }
+      return <DownLoadIcon />;
+    },
+  },
 ];
 
 const Box = () => {
