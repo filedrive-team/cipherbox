@@ -17,6 +17,7 @@
     background-attachment: fixed;
     box-sizing: border-box;
     border-radius: 13px;
+    cursor: pointer;
 
     .tabContent {
       display: flex;
@@ -41,26 +42,28 @@
 
 
 .listWrap {
-  :global {
-    .ant-table-thead {
-      th {
-        background: transparent;
-        color: var(--color-111029);
-        font-size: 12px;
-        font-weight: 500;
-      }
+  .listBottom {
+    height: 58px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+  }
 
-      th::before {
-        width: 0 !important;
-        height: 0 !important;
-      }
+  .progressWrap {
+
+    & > div {
+      font-size: 12px;
+      color: var(--color-435179);
+    }
+  }
+
+  .operationWrap {
+    :first-child {
+      margin-right: 10px;
     }
 
-    .ant-table-tbody {
-      td {
-        color: var(--color-435179);
-        font-size: 12px;
-      }
+    & > svg {
+      cursor: pointer;
     }
   }
 }

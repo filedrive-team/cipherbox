@@ -34,6 +34,7 @@
     background-attachment: fixed;
     box-sizing: border-box;
     border-radius: 13px;
+    cursor: pointer;
 
     .tabContent {
       display: flex;
@@ -57,31 +58,10 @@
 }
 
 .listWrap {
-  :global {
-    .ant-table-thead {
-      th {
-        background: transparent;
-        color: var(--color-111029);
-        font-size: 12px;
-        font-weight: 500;
-      }
-
-      th::before {
-        width: 0 !important;
-        height: 0 !important;
-      }
-    }
-
-    .ant-table-tbody {
-      td {
-        color: var(--color-435179);
-        font-size: 12px;
-      }
-
-      .ant-table-placeholder > td {
-        border-bottom: none;
-      }
-
-    }
+  .listBottom {
+    height: 58px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
   }
 }
