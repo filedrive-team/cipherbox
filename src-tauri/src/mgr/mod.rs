@@ -10,7 +10,7 @@ use fvm_ipld_blockstore::{Blockstore, MemoryBlockstore};
 use fvm_ipld_car::{load_car, Block, CarHeader, CarReader};
 use fvm_ipld_encoding::{from_slice, to_vec, DAG_CBOR};
 use rusqlite::{params, Connection};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::{
     ffi::OsString,
     fs::{read, write},
@@ -72,7 +72,10 @@ pub async fn web3storage_upload(data: Vec<u8>, cbox: &CBox) -> Result<Cid, Error
     Ok(cid)
 }
 
-pub fn init_task_record(task: &CBoxTask) -> Result<TaskRecord, Error> {
+pub fn init_task_record(
+    task: &CBoxTask,
+    cipherbox_app: Arc<Mutex<App>>,
+) -> Result<TaskRecord, Error> {
     if task.task_type != 0 {
         return Err(Error::Other("current only support backup task".into()));
     }

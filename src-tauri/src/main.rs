@@ -113,7 +113,7 @@ async fn task_loop(
             appref.get_pending_task()
         };
         match task {
-            Some(task) => match init_task_record(&task) {
+            Some(task) => match init_task_record(&task, cipherbox_app.clone()) {
                 Ok(mut task_record) => {
                     let cbox = {
                         let applock = cipherbox_app.lock().unwrap();
@@ -123,7 +123,10 @@ async fn task_loop(
                             Err(err) => {
                                 task_err = Some((
                                     task_record.task_id,
-                                    Error::Other("failed to get cbox when doing task".into()),
+                                    Error::Other(format!(
+                                        "failed to get cbox when doing task {}",
+                                        err
+                                    )),
                                 ));
                                 break 'Outer;
                             }
@@ -315,6 +318,12 @@ async fn task_loop(
             None => {}
         }
     }
+    // reduce running task
+    {
+        let mut applock = cipherbox_app.lock().unwrap();
+        let appref = &mut *applock;
+        appref.running_task_num -= 1;
+    }
     match tt.send(chan_id).await {
         Ok(_) => Ok(()),
         Err(err) => {
@@ -413,3 +422,27 @@ async fn main() -> () {
     });
     hd.await;
 }
+
+// #[cfg(test)]
+// mod test {
+//     use super::*;
+
+//     #[async_std::test]
+//     async fn test_read_full() {
+//         let mut buffer = vec![0u8; mgr::CHUNK_SIZE];
+//         let file_path = "/Users/lifeng/nc62/piecestore";
+//         let mut fd = async_std::fs::File::open(file_path).await.unwrap();
+
+//         loop {
+//             match read_full(&mut fd, &mut buffer).await {
+//                 Ok(0) => break,
+//                 Ok(n) => {
+//                     dbg!(n);
+//                 }
+//                 Err(err) => {
+//                     dbg!(err);
+//                 }
+//             }
+//         }
+//     }
+// }

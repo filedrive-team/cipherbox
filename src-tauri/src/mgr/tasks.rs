@@ -22,7 +22,7 @@ impl App {
     pub fn get_pending_task(&self) -> Option<CBoxTask> {
         if let Some(c) = &self.conn {
             let mut stmt = c
-                .prepare("SELECT id, box_id, nonce, origin_path, target_path, task_type FROM cbox_task order by id limit 1")
+                .prepare("SELECT id, box_id, nonce, origin_path, target_path, task_type FROM cbox_task where status = 0 order by id asc limit 1")
                 .unwrap();
             let box_iter = match stmt.query_map([], |row| {
                 let mut b = CBoxTask::default();
@@ -47,7 +47,25 @@ impl App {
             if list.len() == 0 {
                 None
             } else {
-                Some(list.remove(0))
+                let task = list.remove(0);
+                let status = match task.task_type {
+                    0 => 1,
+                    1 => 3,
+                    _ => 1,
+                };
+                // update task state
+                match c.execute(
+                    r#"
+                    update cbox_task set status = ?1 where id = ?2
+                "#,
+                    params![status, task.id],
+                ) {
+                    Ok(_) => Some(task),
+                    Err(err) => {
+                        eprint!("{:?}", err);
+                        None
+                    }
+                }
             }
         } else {
             None
