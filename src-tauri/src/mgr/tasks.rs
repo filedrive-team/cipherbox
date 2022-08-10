@@ -19,11 +19,24 @@ impl App {
             }
         }
     }
-    pub fn list_task(&self) -> Result<Vec<CBoxTask>, Error> {
+    pub fn list_task(&self, status: Vec<i32>) -> Result<Vec<CBoxTask>, Error> {
         if let Some(c) = &self.conn {
-            let mut stmt = c
-                .prepare("SELECT id, box_id, origin_path, target_path, task_type, create_at, modify_at, status, err FROM cbox_task order by id desc")
-                .unwrap();
+            let sqlstr = match status.len() {
+                0 => "SELECT id, box_id, origin_path, target_path, task_type, create_at, modify_at, status, err FROM cbox_task order by id desc".to_string(),
+                _ => {
+                    let mut ss = String::from("SELECT id, box_id, origin_path, target_path, task_type, create_at, modify_at, status, err FROM cbox_task where status in ( ");
+                    for sta in status.into_iter().enumerate() {
+                        if sta.0 == 0 {
+                            ss = format!("{}{}", ss, sta.1)
+                        } else {
+                            ss = format!("{},{}", ss, sta.1)
+                        }
+                    }
+                    ss = format!("{} ) order by id desc", ss);
+                    ss
+                }
+            };
+            let mut stmt = c.prepare(&sqlstr).unwrap();
             let box_iter = stmt.query_map([], |row| {
                 let mut b = CBoxTask::default();
                 b.id = row.get(0)?;

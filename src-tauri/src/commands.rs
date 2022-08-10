@@ -93,9 +93,12 @@ pub async fn task_cancel(id: i64, app: State<'_, Arc<Mutex<App>>>) -> Result<Com
  * api - task list
  */
 #[tauri::command]
-pub async fn task_list(app: State<'_, Arc<Mutex<App>>>) -> Result<CommonRes<Vec<CBoxTask>>, Error> {
+pub async fn task_list(
+    status: Vec<i32>,
+    app: State<'_, Arc<Mutex<App>>>,
+) -> Result<CommonRes<Vec<CBoxTask>>, Error> {
     let app = app.lock().unwrap();
-    match app.list_task() {
+    match app.list_task(status) {
         Ok(list) => Ok(CommonRes::ok(list)),
         Err(e) => Ok(CommonRes::error(e)),
     }
