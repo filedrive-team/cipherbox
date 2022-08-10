@@ -2,10 +2,104 @@
 use crate::{
     cipher::{set_password, verify_password},
     errors::Error,
-    mgr::{App, AppInfo, CBox, CBoxObj, CommonRes, CreateCboxParams, CIPHER_MESSAGE_NAME},
+    mgr::{
+        App, AppInfo, CBox, CBoxObj, CBoxTask, CommonRes, ControlEvent, CreateCboxParams,
+        CIPHER_MESSAGE_NAME,
+    },
 };
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, State};
+
+/*
+ * api - task pause
+ */
+#[tauri::command]
+pub async fn task_pause(id: u64, app: State<'_, Arc<Mutex<App>>>) -> Result<CommonRes<()>, Error> {
+    let app = app.lock().unwrap();
+
+    if app.task_trigger.is_none() {
+        return Ok(CommonRes::error(Error::Other(
+            "task trigger is none".to_string(),
+        )));
+    }
+    let s = app.task_trigger.as_ref().unwrap();
+
+    let event = match id {
+        0 => ControlEvent::PauseAll,
+        _ => ControlEvent::Pause(id as i64),
+    };
+    match async_std::task::block_on(s.send(event)) {
+        Ok(_) => Ok(CommonRes::ok(())),
+        Err(e) => {
+            eprintln!("failed to send pause message: {}", e);
+            Ok(CommonRes::error(Error::Other(format!("{}", e))))
+        }
+    }
+}
+
+/*
+ * api - task resume
+ */
+#[tauri::command]
+pub async fn task_resume(id: u64, app: State<'_, Arc<Mutex<App>>>) -> Result<CommonRes<()>, Error> {
+    if id == 0 {
+        return Ok(CommonRes::error(Error::Other("id is 0".to_string())));
+    }
+    let app = app.lock().unwrap();
+
+    if app.task_trigger.is_none() {
+        return Ok(CommonRes::error(Error::Other(
+            "task trigger is none".to_string(),
+        )));
+    }
+    let s = app.task_trigger.as_ref().unwrap();
+
+    match async_std::task::block_on(s.send(ControlEvent::Resume(id as i64))) {
+        Ok(_) => Ok(CommonRes::ok(())),
+        Err(e) => {
+            eprintln!("failed to send resume message: {}", e);
+            Ok(CommonRes::error(Error::Other(format!("{}", e))))
+        }
+    }
+}
+
+/*
+ * api - task cancel
+ */
+#[tauri::command]
+pub async fn task_cancel(id: i64, app: State<'_, Arc<Mutex<App>>>) -> Result<CommonRes<()>, Error> {
+    if id == 0 {
+        return Ok(CommonRes::error(Error::Other("id is 0".to_string())));
+    }
+    let app = app.lock().unwrap();
+
+    if app.task_trigger.is_none() {
+        return Ok(CommonRes::error(Error::Other(
+            "task trigger is none".to_string(),
+        )));
+    }
+    let s = app.task_trigger.as_ref().unwrap();
+
+    match async_std::task::block_on(s.send(ControlEvent::Cancel(id as i64))) {
+        Ok(_) => Ok(CommonRes::ok(())),
+        Err(e) => {
+            eprintln!("failed to send resume message: {}", e);
+            Ok(CommonRes::error(Error::Other(format!("{}", e))))
+        }
+    }
+}
+
+/*
+ * api - task list
+ */
+#[tauri::command]
+pub async fn task_list(app: State<'_, Arc<Mutex<App>>>) -> Result<CommonRes<Vec<CBoxTask>>, Error> {
+    let app = app.lock().unwrap();
+    match app.list_task() {
+        Ok(list) => Ok(CommonRes::ok(list)),
+        Err(e) => Ok(CommonRes::error(e)),
+    }
+}
 
 /*
  * api - box objects list

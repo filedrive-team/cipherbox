@@ -10,7 +10,7 @@ mod mgr;
 
 use crate::commands::{
     app_info, backup, box_create, box_list, box_obj_list, box_set_active, password_set,
-    password_verify,
+    password_verify, task_cancel, task_list, task_pause, task_resume,
 };
 use crate::{
     cipher::encrypt_or_decrypt,
@@ -406,6 +406,10 @@ async fn main() -> () {
             box_set_active,
             backup,
             box_obj_list,
+            task_list,
+            task_cancel,
+            task_resume,
+            task_pause,
         ])
         .build(context)
         .expect("error while running tauri application");

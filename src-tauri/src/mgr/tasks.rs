@@ -19,6 +19,34 @@ impl App {
             }
         }
     }
+    pub fn list_task(&self) -> Result<Vec<CBoxTask>, Error> {
+        if let Some(c) = &self.conn {
+            let mut stmt = c
+                .prepare("SELECT id, box_id, origin_path, target_path, task_type, create_at, modify_at, status, err FROM cbox_task order by id desc")
+                .unwrap();
+            let box_iter = stmt.query_map([], |row| {
+                let mut b = CBoxTask::default();
+                b.id = row.get(0)?;
+                b.box_id = row.get(1)?;
+                b.origin_path = row.get(2)?;
+                b.target_path = row.get(3)?;
+                b.task_type = row.get(4)?;
+                b.create_at = row.get(5)?;
+                b.modify_at = row.get(6)?;
+                b.status = row.get(7)?;
+                b.err = row.get(8)?;
+                Ok(b)
+            })?;
+
+            let mut list: Vec<CBoxTask> = Vec::new();
+            for b in box_iter {
+                list.push(b.unwrap())
+            }
+            Ok(list)
+        } else {
+            Err(Error::NoDBConnection)
+        }
+    }
     pub fn get_pending_task(&self) -> Option<CBoxTask> {
         if let Some(c) = &self.conn {
             let mut stmt = c
@@ -54,12 +82,7 @@ impl App {
                     _ => 1,
                 };
                 // update task state
-                match c.execute(
-                    r#"
-                    update cbox_task set status = ?1 where id = ?2
-                "#,
-                    params![status, task.id],
-                ) {
+                match self.update_task_status(task.id, status) {
                     Ok(_) => Some(task),
                     Err(err) => {
                         eprint!("{:?}", err);
@@ -70,6 +93,20 @@ impl App {
         } else {
             None
         }
+    }
+    pub fn update_task_status(&self, id: i64, status: isize) -> Result<(), Error> {
+        if !self.has_connection() {
+            return Err(Error::NoDBConnection);
+        }
+
+        let c = self.conn.as_ref().unwrap();
+        c.execute(
+            r#"
+            update cbox_task set status = ?1 where id = ?2
+        "#,
+            params![status, id],
+        )?;
+        Ok(())
     }
     pub fn record_task_err(&self, id: i64, err: Error) -> Result<(), Error> {
         if !self.has_connection() {
