@@ -143,9 +143,9 @@ impl App {
         let c = self.conn.as_ref().unwrap();
         c.execute(
             r#"
-            insert into cbox_task (box_id, nonce, origin_path, target_path, task_type, create_at, modify_at, status) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+            insert into cbox_task (box_id, nonce, origin_path, target_path, task_type, create_at, modify_at, status, err) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
         "#,
-            params![par.box_id, par.nonce, par.origin_path, par.target_path, par.task_type, par.create_at, par.modify_at, par.status],
+            params![par.box_id, par.nonce, par.origin_path, par.target_path, par.task_type, par.create_at, par.modify_at, par.status, par.err],
         )?;
         Ok(c.last_insert_rowid())
     }
