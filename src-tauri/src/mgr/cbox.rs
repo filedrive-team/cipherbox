@@ -43,11 +43,9 @@ impl App {
         match self.user_key {
             Some(uk) => {
                 let mut bs = gen_nonce(32);
-                dbg!(&bs);
                 for (i, v) in bs.iter_mut().enumerate() {
                     *v = uk[i] ^ *v
                 }
-                dbg!(&bs);
                 Ok(bs)
             }
             None => Err(Error::SessionExpired),

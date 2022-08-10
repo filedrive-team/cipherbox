@@ -208,12 +208,9 @@ mod test {
         )
         .expect("failed to do json deserialize");
         let new_box02 = app.create_cbox(cbpa02).expect("failed to create cbox");
-        dbg!(new_box02);
         // query Cbox
         let list = app.list_cbox().unwrap();
-        dbg!(&list);
         let list_json: String = serde_json::to_string(&list).unwrap();
-        dbg!(&list_json);
         let mut obj01 = CBoxObj::default();
         obj01.box_id = 1;
         obj01.name = "cbox_obj_o1".into();
@@ -223,9 +220,7 @@ mod test {
         app.create_cbox_obj(&obj01).unwrap();
         // query CboxObj
         let objlist = app.list_cbox_obj().unwrap();
-        dbg!(&objlist);
         let objlist_json = serde_json::to_string(&objlist).unwrap();
-        dbg!(objlist_json);
     }
 
     #[test]

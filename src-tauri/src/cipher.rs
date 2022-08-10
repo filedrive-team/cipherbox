@@ -108,9 +108,7 @@ mod test {
         let password = "cipherbox$0awesome0$";
         let nonce = gen_nonce(16);
         let derived01 = pbkdf2_with_nonce(password, &nonce, PBKDF2IC);
-        dbg!(&derived01);
         let derived02 = pbkdf2_with_nonce(password, &nonce, PBKDF2IC);
-        dbg!(&derived02);
         assert_eq!(derived01, derived02);
     }
 

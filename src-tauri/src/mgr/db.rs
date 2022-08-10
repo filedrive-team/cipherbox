@@ -11,7 +11,7 @@ impl App {
     pub fn init_db(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let mut dbfile = PathBuf::from(self.app_dir.clone());
         dbfile.push(DB_FILE_NAME);
-        dbg!(dbfile.as_os_str());
+        println!("{:?}", dbfile.as_os_str());
         let conn = Connection::open(dbfile)?;
 
         conn.execute_batch(
