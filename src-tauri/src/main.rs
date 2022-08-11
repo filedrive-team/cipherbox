@@ -314,20 +314,17 @@ async fn task_loop(
                             cbo.obj_type = 0;
                             cbo.origin_path = chore.path.clone();
                             let filename = match chore_path.file_name() {
-                                Some(name) => match name.to_str() {
-                                    Some(name) => name.to_string(),
-                                    None => String::new(),
-                                },
+                                Some(name) => name.to_str().unwrap_or("").to_string(),
                                 None => String::new(),
                             };
                             cbo.name = filename.clone();
                             cbo.path = match chore_path.strip_prefix(&tpath) {
-                                Ok(p) => match p.to_str() {
-                                    Some(p) => p.to_string(),
-                                    None => String::new(),
-                                },
+                                Ok(p) => p.to_str().unwrap_or("").into(),
                                 Err(_) => String::new(),
                             };
+                            if cbo.path == "" {
+                                cbo.path = cbo.name.clone();
+                            }
                             cbo.cid = chore.chunks_ref.clone();
                             cbo.size = chore.size;
                             cbo.parent_id = match applock.get_parent_id(cbo.box_id, &cbo.path) {
