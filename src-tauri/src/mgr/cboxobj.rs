@@ -1,6 +1,53 @@
 use super::*;
 
 impl App {
+    pub fn get_parent_id(&self, box_id: i64, path: &str) -> Result<i64, Error> {
+        let mut pa = PathBuf::from(path);
+        let mut dir_list = Vec::<String>::new();
+        let mut parent_id = 0i64;
+        loop {
+            match pa.parent() {
+                Some(p) => {
+                    dir_list.push(
+                        p.as_os_str()
+                            .to_str()
+                            .expect("&OsStr => &Str failed")
+                            .into(),
+                    );
+                    pa = PathBuf::from(p);
+                }
+                None => break,
+            };
+        }
+        let mut last_idx = dir_list.len() - 1;
+        while last_idx > 0 {
+            match self.get_cbox_obj(box_id, &dir_list[last_idx]) {
+                Some(obj) => {
+                    parent_id = obj.id;
+                }
+                None => {
+                    let mut obj = CBoxObj::default();
+                    obj.box_id = box_id;
+                    obj.path = dir_list[last_idx].clone();
+                    obj.obj_type = 1;
+                    obj.create_at = current().expect("failed to get current timestamp");
+                    obj.modify_at = obj.create_at;
+                    obj.name = match PathBuf::from(&obj.path).file_name() {
+                        Some(n) => n.to_str().expect("&OsStr => &Str failed").into(),
+                        None => "".into(),
+                    };
+                    match self.create_cbox_obj(&obj) {
+                        Ok(id) => {
+                            parent_id = id;
+                        }
+                        Err(err) => return Err(err),
+                    };
+                }
+            }
+            last_idx -= 1;
+        }
+        Ok(parent_id)
+    }
     pub fn create_cbox_obj(&self, par: &CBoxObj) -> Result<i64, Error> {
         if !self.has_connection() {
             return Err(Error::NoDBConnection);

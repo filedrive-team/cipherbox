@@ -33,8 +33,8 @@ impl App {
                 CREATE TABLE IF NOT EXISTS cbox_obj (
                     id    INTEGER PRIMARY KEY AUTOINCREMENT,
                     box_id INTEGER,
-                    cid TEXT,
-                    hash TEXT,
+                    cid TEXT DEFAULT '',
+                    hash TEXT DEFAULT '',
                     nonce BLOB,
                     size INTEGER,
                     name TEXT,
@@ -43,7 +43,7 @@ impl App {
                     obj_type INTEGER,
                     create_at INTEGER,
                     modify_at INTEGER,
-                    parent_id INTEGER
+                    parent_id INTEGER DEFAULT 0
                 );
                 CREATE UNIQUE INDEX IF NOT EXISTS index_cbox_obj_path ON cbox_obj (box_id, path);
                 CREATE TABLE IF NOT EXISTS cbox_task (
@@ -57,7 +57,7 @@ impl App {
                     create_at INTEGER,
                     modify_at INTEGER,
                     task_type INTEGER,
-                    err TEXT
+                    err TEXT DEFAULT ''
                 );
                 CREATE TABLE IF NOT EXISTS identity (
                     id    INTEGER PRIMARY KEY AUTOINCREMENT,

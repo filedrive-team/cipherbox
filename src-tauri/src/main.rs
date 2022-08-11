@@ -18,13 +18,12 @@ use crate::{
     mgr::{init_task_record, spawn_and_log_error, web3storage_upload, App, Chunks, ControlEvent},
 };
 use async_std::{
-    channel::{bounded, unbounded, Receiver, Sender},
+    channel::{bounded, Receiver, Sender},
     prelude::*,
 };
 use futures::{select, FutureExt};
 use fvm_ipld_encoding::to_vec;
 use mgr::{current, CBoxObj};
-use std::io::Read;
 use std::{
     collections::hash_map::{Entry, HashMap},
     fs::create_dir_all,
@@ -231,7 +230,7 @@ async fn task_loop(
                         };
                     }
                     let applock = cipherbox_app.lock().unwrap();
-                    let appref = &*applock;
+                    //let appref = &*applock;
                     // save a finished task to db
                     if task.task_type == 0 {
                         // save record for backup task
@@ -271,31 +270,11 @@ async fn task_loop(
                             };
                             cbo.cid = chore.chunks_ref.clone();
                             cbo.size = chore.size;
-                            appref.create_cbox_obj(&cbo).unwrap();
-                            // TODO
-                            // dealing with hierarchical parent node
-                            //
-                            // if &cbo.name != &cbo.path {
-                            //     let p1 = std::path::PathBuf::from(&cbo.path);
-                            //     let parent_path = match p1.parent() {
-                            //         Some(p) => match p.to_str() {
-                            //             Some(p) => p.to_string(),
-                            //             None => String::new(),
-                            //         },
-                            //         None => String::new(),
-                            //     };
-                            //     if !parent_path.is_empty() {
-                            //         match appref.get_cbox_obj(task.box_id, &parent_path) {
-                            //             Some(obj) => {
-                            //                 cbo.parent_id = obj.id;
-                            //             }
-                            //             None => {
-                            //                 let mut cbox_obj = CBoxObj::default();
-                            //                 cbox_obj.box_id = task.box_id;
-                            //             }
-                            //         }
-                            //     }
-                            // }
+                            cbo.parent_id = match applock.get_parent_id(cbo.box_id, &cbo.path) {
+                                Ok(id) => id,
+                                Err(_) => 0,
+                            };
+                            applock.create_cbox_obj(&cbo).unwrap();
                         }
                     }
                     // update task record - set status finished
