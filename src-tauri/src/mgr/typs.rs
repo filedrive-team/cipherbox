@@ -185,18 +185,25 @@ pub struct ChoreProgress {
     pub box_id: i64,
     pub task_id: i64,
     pub total_size: u64,
-    pub current: u64,
+    pub total: u64,
+    pub finished: u64,
+    pub finished_size: u64,
     pub backup: bool,
     pub recover: bool,
-    pub err: String,
+    pub err: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct TaskRecord {
+    pub box_id: i64,
     pub task_id: i64,
     pub total_size: u64,
+    pub total: u64,
+    pub finished: u64,
+    pub finished_size: u64,
     pub backup: bool,
     pub recover: bool,
+    #[serde(skip)]
     pub upload_list: Vec<ChoreUploadRecord>,
     pub err: Option<String>,
 }
@@ -207,6 +214,7 @@ pub struct ChoreUploadRecord {
     pub size: u64,
     pub chunk_count: u64,
     pub chunk_uploaded: u64,
+    pub uploaded_size: u64,
     pub chunks: Vec<Cid>,
     pub chunks_ref: String,
 }

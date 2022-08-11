@@ -19,8 +19,9 @@ impl App {
                 None => break,
             };
         }
-        let mut last_idx = dir_list.len() - 1;
+        let mut last_idx = dir_list.len();
         while last_idx > 0 {
+            last_idx -= 1;
             match self.get_cbox_obj(box_id, &dir_list[last_idx]) {
                 Some(obj) => {
                     parent_id = obj.id;

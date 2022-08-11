@@ -79,6 +79,7 @@ pub fn init_task_record(
     if task.task_type != 0 {
         return Err(Error::Other("current only support backup task".into()));
     }
+
     let meta = std::fs::metadata(&task.origin_path)?;
     if meta.is_dir() {
         return Err(Error::Other("dir backup task not supported".into()));
@@ -89,13 +90,18 @@ pub fn init_task_record(
     }
     let chunck_count = (fsize - 1) / (CHUNK_SIZE as u64) + 1;
     Ok(TaskRecord {
+        box_id: task.box_id,
         task_id: task.id,
         backup: true,
         recover: false,
         total_size: fsize,
+        total: 1,
+        finished: 0,
+        finished_size: 0,
         upload_list: vec![ChoreUploadRecord {
             path: task.origin_path.clone(),
             size: fsize,
+            uploaded_size: 0,
             chunk_count: chunck_count,
             chunk_uploaded: 0,
             chunks: Vec::new(),

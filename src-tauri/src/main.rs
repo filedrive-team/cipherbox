@@ -15,7 +15,10 @@ use crate::commands::{
 use crate::{
     cipher::encrypt_or_decrypt,
     errors::Error,
-    mgr::{init_task_record, spawn_and_log_error, web3storage_upload, App, Chunks, ControlEvent},
+    mgr::{
+        init_task_record, spawn_and_log_error, web3storage_upload, App, ChoreProgress, Chunks,
+        ControlEvent, TaskRecord,
+    },
 };
 use async_std::{
     channel::{bounded, Receiver, Sender},
@@ -31,6 +34,9 @@ use std::{
 };
 use tauri::{Manager, RunEvent};
 use tauri_plugin_fs_extra::FsExtra;
+
+pub static progress_emit: &str = "task_update";
+
 async fn task_control_loop(cipherbox_app: Arc<Mutex<App>>, mut rx: Receiver<ControlEvent>) {
     let concurrent_num = 1;
     let mut chan_id: i32 = 1;
@@ -191,6 +197,7 @@ async fn task_loop(
                                         match web3storage_upload(encrypted_data, &cbox).await {
                                             Ok(cid) => {
                                                 upload_chore.chunk_uploaded += 1;
+                                                upload_chore.uploaded_size += n as u64;
                                                 upload_chore.chunks.push(cid);
                                             },
                                             Err(err) =>  {
@@ -198,7 +205,23 @@ async fn task_loop(
                                                 break 'Outer;
                                             }
                                         };
-
+                                        task_record.finished_size += n as u64;
+                                        {
+                                            let applock = cipherbox_app.lock().unwrap();
+                                            if let Some(h) = applock.tauri_handle.as_ref() {
+                                                h.emit_all(progress_emit, ChoreProgress{
+                                                    box_id: task.box_id,
+                                                    task_id: task_record.task_id,
+                                                    total: task_record.total,
+                                                    total_size: task_record.total_size,
+                                                    finished: task_record.finished,
+                                                    finished_size: task_record.finished_size,
+                                                    backup: task_record.backup,
+                                                    recover: task_record.recover,
+                                                    err: task_record.err.clone(),
+                                                }).unwrap_or(());
+                                            };
+                                        }
                                     },
                                     Err(err) => {
                                         eprint!("{}", err);
@@ -228,6 +251,27 @@ async fn task_loop(
                                 break 'Outer;
                             }
                         };
+                        task_record.finished += 1;
+                        {
+                            let applock = cipherbox_app.lock().unwrap();
+                            if let Some(h) = applock.tauri_handle.as_ref() {
+                                h.emit_all(
+                                    progress_emit,
+                                    ChoreProgress {
+                                        box_id: task.box_id,
+                                        task_id: task_record.task_id,
+                                        total: task_record.total,
+                                        total_size: task_record.total_size,
+                                        finished: task_record.finished,
+                                        finished_size: task_record.finished_size,
+                                        backup: task_record.backup,
+                                        recover: task_record.recover,
+                                        err: task_record.err.clone(),
+                                    },
+                                )
+                                .unwrap_or(());
+                            };
+                        }
                     }
                     let applock = cipherbox_app.lock().unwrap();
                     //let appref = &*applock;
@@ -276,8 +320,10 @@ async fn task_loop(
                             };
                             applock.create_cbox_obj(&cbo).unwrap();
                         }
+                        applock
+                            .update_task_status(task.id, 5)
+                            .unwrap_or_else(|e| eprint!("{}", e))
                     }
-                    // update task record - set status finished
                 }
                 Err(err) => {
                     task_err = Some((task.id, err));
