@@ -35,9 +35,10 @@ use std::{
 use tauri::{Manager, RunEvent};
 use tauri_plugin_fs_extra::FsExtra;
 
-pub static progress_emit: &str = "task_update";
+pub static PROGRESS_EMIT: &str = "task_update";
 
 async fn task_control_loop(cipherbox_app: Arc<Mutex<App>>, mut rx: Receiver<ControlEvent>) {
+    println!("into task control loop");
     let concurrent_num = 1;
     let mut chan_id: i32 = 1;
     let (relaese_chan_tx, mut release_chan_rx) = bounded(1);
@@ -49,9 +50,10 @@ async fn task_control_loop(cipherbox_app: Arc<Mutex<App>>, mut rx: Receiver<Cont
                 Some(event) => {
                     match event {
                         ControlEvent::LoopStart => {
+                            println!("receive loop start event");
                             let mut applock = cipherbox_app.lock().unwrap();
                             let appref = &mut *applock;
-
+                            println!("running task num: {}", appref.running_task_num);
                             if appref.running_task_num < concurrent_num {
                                 appref.running_task_num += 1;
                                 drop(applock);
@@ -110,6 +112,7 @@ async fn task_loop(
     chan_id: i32,
     mut chan: Receiver<ControlEvent>,
 ) -> std::result::Result<(), Error> {
+    println!("one task loop ----------");
     'Outer: loop {
         let mut task_err: Option<(i64, Error)> = None;
         let task = {
@@ -211,7 +214,7 @@ async fn task_loop(
                                         {
                                             let applock = cipherbox_app.lock().unwrap();
                                             if let Some(h) = applock.tauri_handle.as_ref() {
-                                                h.emit_all(progress_emit, ChoreProgress{
+                                                h.emit_all(PROGRESS_EMIT, ChoreProgress{
                                                     box_id: task.box_id,
                                                     task_id: task_record.task_id,
                                                     total: task_record.total,
@@ -260,7 +263,7 @@ async fn task_loop(
                             let applock = cipherbox_app.lock().unwrap();
                             if let Some(h) = applock.tauri_handle.as_ref() {
                                 h.emit_all(
-                                    progress_emit,
+                                    PROGRESS_EMIT,
                                     ChoreProgress {
                                         box_id: task.box_id,
                                         task_id: task_record.task_id,
@@ -465,26 +468,62 @@ async fn main() -> () {
     hd.await;
 }
 
-// #[cfg(test)]
-// mod test {
-//     use super::*;
+#[cfg(test)]
+mod test {
+    use super::*;
 
-//     #[async_std::test]
-//     async fn test_read_full() {
-//         let mut buffer = vec![0u8; mgr::CHUNK_SIZE];
-//         let file_path = "/Users/lifeng/nc62/piecestore";
-//         let mut fd = async_std::fs::File::open(file_path).await.unwrap();
+    fn test_user_key() -> [u8; 32] {
+        let mut uk = [0u8; 32];
+        let rng = cipher::gen_nonce(32);
+        for (i, d) in uk.iter_mut().enumerate() {
+            *d = rng[i]
+        }
+        uk
+    }
 
-//         loop {
-//             match read_full(&mut fd, &mut buffer).await {
-//                 Ok(0) => break,
-//                 Ok(n) => {
-//                     dbg!(n);
-//                 }
-//                 Err(err) => {
-//                     dbg!(err);
-//                 }
-//             }
-//         }
-//     }
-// }
+    #[async_std::test]
+    async fn test_main() {
+        //let temp_dir = std::env::temp_dir();
+        let temp_dir = std::path::PathBuf::from("/Users/lifeng/cipherbox-test");
+        // init a App
+        let mut app = App::default();
+        let (tx, rx) = bounded(10);
+        app.task_trigger = Some(tx);
+        app.setup(temp_dir.as_os_str().to_owned());
+        // init db
+        app.init_db().expect("failed to init sqlite");
+        app.set_user_key(test_user_key());
+
+        // create a Cbox
+        let cbpa01: mgr::CreateCboxParams = serde_json::from_str(
+            r#"
+            {
+                "name": "cbox_x_00002",
+                "encryptData": true,
+                "provider": 1,
+                "accessToken": "token:for:web3.storage"
+            }
+        "#,
+        )
+        .expect("failed tp do json deserialize");
+        let new_box01 = app.create_cbox(cbpa01).expect("failed to create cbox");
+        // wrap app into Arc/Mutex for multipule thread sharing
+        let cipherbox_app = Arc::new(Mutex::new(app));
+
+        // spawn a thread
+        // loop for trigger or pause async task
+        let hd = async_std::task::spawn(task_control_loop(cipherbox_app.clone(), rx));
+        async_std::task::spawn(async move {
+            let applock = cipherbox_app.lock().unwrap();
+
+            applock
+                .add_backup_tasks(
+                    new_box01.id,
+                    vec![String::from("/Users/lifeng/nc62/psserver")],
+                )
+                .unwrap();
+        });
+
+        hd.await;
+    }
+}

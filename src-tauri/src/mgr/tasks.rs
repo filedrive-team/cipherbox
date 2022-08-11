@@ -3,23 +3,6 @@ use async_std::task::Task;
 use tauri::Manager;
 
 impl App {
-    pub async fn setup_chore_loop(&'static self) {
-        // async_std::task::spawn(async move {
-        //     self.emit_all(ChoreProgress::default());
-        // });
-
-        // async_std::task::spawn(async {
-        //     self.emit_all(ChoreProgress::default());
-        // });
-    }
-    pub fn emit_all(&self, cp: ChoreProgress) {
-        if let Some(ref h) = self.tauri_handle {
-            match h.emit_all("progress", cp) {
-                Ok(_) => {}
-                Err(_e) => {}
-            }
-        }
-    }
     pub fn list_task(&self, status: Vec<i32>) -> Result<Vec<CBoxTask>, Error> {
         if let Some(c) = &self.conn {
             let sqlstr = match status.len() {
@@ -137,11 +120,14 @@ impl App {
         if !self.has_connection() {
             return Err(Error::NoDBConnection);
         }
-
+        println!(
+            "progress updated: id: {} total: {} total_size: {} finished: {} finished_size: {}",
+            id, total, total_size, finished, finished_size
+        );
         let c = self.conn.as_ref().unwrap();
         c.execute(
             r#"
-            update cbox_task set total = ?1, total_size = ?2, finished = ?3, finished_size = ?4 and where id = ?5
+            update cbox_task set total = ?1, total_size = ?2, finished = ?3, finished_size = ?4  where id = ?5
         "#,
             params![total, total_size, finished, finished_size, id],
         )?;
@@ -169,7 +155,7 @@ impl App {
         let c = self.conn.as_ref().unwrap();
         c.execute(
             r#"
-            insert into cbox_task (box_id, nonce, origin_path, target_path, task_type, create_at, modify_at, status, err, total, total_size, finished, finished_size) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+            insert into cbox_task (box_id, nonce, origin_path, target_path, task_type, create_at, modify_at, status, err, total, total_size, finished, finished_size) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
         "#,
             params![par.box_id, par.nonce, par.origin_path, par.target_path, par.task_type, par.create_at, par.modify_at, par.status, par.err, par.total, par.total_size, par.finished, par.finished_size],
         )?;
