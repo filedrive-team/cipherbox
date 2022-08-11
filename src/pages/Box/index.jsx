@@ -22,6 +22,8 @@ import { ReactComponent as OpenIcon } from '@/assets/box/open.svg';
 import { shell } from '@tauri-apps/api';
 import PageControl from '@/components/PageControl';
 import List from '@/components/List';
+import prettyBytes from 'pretty-bytes';
+import dayjs from 'dayjs';
 
 const tabData = [
   {
@@ -47,11 +49,15 @@ const columns = [
     title: '文件大小',
     dataIndex: 'size',
     key: 'size',
+    render: (value) => <div>{prettyBytes(value)}</div>,
   },
   {
     title: '备份时间',
     dataIndex: 'createAt',
     key: 'createAt',
+    render: (value) => (
+      <div>{dayjs(new Date(value)).format('YYYY/MM/DD HH:mm')}</div>
+    ),
   },
   {
     title: '操作',

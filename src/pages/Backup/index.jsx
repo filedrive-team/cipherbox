@@ -1,4 +1,5 @@
 import styles from '@/pages/Backup/index.module.scss';
+import classNames from 'classnames';
 import {
   copyButton,
   copyIcon,
@@ -6,13 +7,15 @@ import {
   switchIcon,
 } from '@/styles/home.module.scss';
 import { useState } from 'react';
-import { useHistory } from 'react-router';
 import List from '@/components/List';
 import PageControl from '@/components/PageControl';
-import { Progress } from 'antd';
+import { Progress, Tooltip } from 'antd';
 import { ReactComponent as DeleteIcon } from '@/assets/backup/delete.svg';
 import { ReactComponent as StartIcon } from '@/assets/backup/start.svg';
 import { ReactComponent as StopIcon } from '@/assets/backup/stop.svg';
+import { useEffect } from 'react';
+import backupStore from '@/store/modules/backup';
+import { observer } from 'mobx-react';
 const tabData = [
   {
     icon: copyIcon,
@@ -28,18 +31,27 @@ const tabData = [
 
 const columns = [
   {
-    title: '文件名',
-    dataIndex: 'name',
-    key: 'name',
-    render: (text) => <div>{text}</div>,
+    title: 'Path',
+    dataIndex: 'originPath',
+    key: 'originPath',
+    width: 50,
+    render: (text) => {
+      return (
+        <Tooltip trigger={'click'} title={text}>
+          <div className={classNames(styles.path)}>{text}</div>
+        </Tooltip>
+      );
+    },
   },
   {
-    title: '文件大小',
+    title: 'Size',
     dataIndex: 'size',
     key: 'size',
+    align: 'center',
+    render: (text) => <div>{'-'}</div>,
   },
   {
-    title: '状态',
+    title: '进度',
     dataIndex: 'createAt',
     key: 'createAt',
     render: (_, value) => {
@@ -128,49 +140,14 @@ const alreadyColumns = [
 const Backup = () => {
   const [currentActive, setCurrentActive] = useState(0);
 
-  /**
-   * @type [{start:boolean,percent:number,boxId:number,cid:string,createAt:number,  hash:string,id:number,modifyAt:number,name:string, objType:number,originPath:string,path:string,size:number, status:number }]
-   */
-  const [data, setData] = useState([
-    {
-      id: 0,
-      percent: 40,
-      name: '背景总结.png',
-      createAt: 0,
-      size: 100,
-      start: true,
-    },
-    {
-      id: 1,
-      percent: 0,
-      name: '背景总结.png',
-      createAt: 0,
-      size: 100,
-      start: false,
-    },
-  ]);
+  async function task() {
+    backupStore.fetchAreadyData();
+    backupStore.fetchData();
+  }
 
-  /**
-   * @type [{start:boolean,percent:number,boxId:number,cid:string,createAt:number,  hash:string,id:number,modifyAt:number,name:string, objType:number,originPath:string,path:string,size:number, status:number }]
-   */
-  const [alreadyData, setAlreadyData] = useState([
-    {
-      id: 0,
-      percent: 40,
-      name: '背景总结.png',
-      createAt: 0,
-      size: 100,
-      start: true,
-    },
-    {
-      id: 1,
-      percent: 0,
-      name: '背景总结.png',
-      createAt: 0,
-      size: 100,
-      start: false,
-    },
-  ]);
+  useEffect(() => {
+    task();
+  }, []);
 
   return (
     <div>
@@ -195,26 +172,28 @@ const Backup = () => {
           <>
             <List
               columns={columns}
-              dataSource={data}
+              dataSource={backupStore.data}
               rowKey={(value) => {
                 return value.id;
               }}
             />
             <div className={styles.listBottom}>
-              {data.length > 10 ? <PageControl total={50} /> : null}
+              {backupStore.data.length > 10 ? <PageControl total={50} /> : null}
             </div>
           </>
         ) : (
           <>
             <List
               columns={alreadyColumns}
-              dataSource={alreadyData}
+              dataSource={backupStore.alreadyData}
               rowKey={(value) => {
                 return value.id;
               }}
             />
             <div className={styles.listBottom}>
-              {data.length > 10 ? <PageControl total={50} /> : null}
+              {backupStore.alreadyData.length > 10 ? (
+                <PageControl total={50} />
+              ) : null}
             </div>
           </>
         )}
@@ -223,4 +202,4 @@ const Backup = () => {
   );
 };
 
-export default Backup;
+export default observer(Backup);
