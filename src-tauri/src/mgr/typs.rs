@@ -148,8 +148,12 @@ pub struct CBoxTask {
     pub origin_path: String,
     // target path to do recover
     pub target_path: String,
-    // status - 0 in queue | 1 uploading | 2 uploaded | 3 downloading | 4 downloaded | 5 finished | 6 paused | 9 failed
+    // status - 0 in queue | 1 processing  | 5 finished | 6 paused | 9 failed
     pub status: u8,
+    pub total: u64,
+    pub total_size: u64,
+    pub finished: u64,
+    pub finished_size: u64,
     pub create_at: u64,
     pub modify_at: u64,
     // task type - 0 backup task | 1 recover task
@@ -184,8 +188,8 @@ pub fn current() -> Result<u64, SystemTimeError> {
 pub struct ChoreProgress {
     pub box_id: i64,
     pub task_id: i64,
-    pub total_size: u64,
     pub total: u64,
+    pub total_size: u64,
     pub finished: u64,
     pub finished_size: u64,
     pub backup: bool,
@@ -197,8 +201,8 @@ pub struct ChoreProgress {
 pub struct TaskRecord {
     pub box_id: i64,
     pub task_id: i64,
-    pub total_size: u64,
     pub total: u64,
+    pub total_size: u64,
     pub finished: u64,
     pub finished_size: u64,
     pub backup: bool,

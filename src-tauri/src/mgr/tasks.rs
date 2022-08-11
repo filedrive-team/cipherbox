@@ -1,4 +1,5 @@
 use super::*;
+use async_std::task::Task;
 use tauri::Manager;
 
 impl App {
@@ -22,9 +23,9 @@ impl App {
     pub fn list_task(&self, status: Vec<i32>) -> Result<Vec<CBoxTask>, Error> {
         if let Some(c) = &self.conn {
             let sqlstr = match status.len() {
-                0 => "SELECT id, box_id, origin_path, target_path, task_type, create_at, modify_at, status, err FROM cbox_task order by id desc".to_string(),
+                0 => "SELECT id, box_id, origin_path, target_path, task_type, create_at, modify_at, status, err, total, total_size, finished, finished_size FROM cbox_task order by id desc".to_string(),
                 _ => {
-                    let mut ss = String::from("SELECT id, box_id, origin_path, target_path, task_type, create_at, modify_at, status, err FROM cbox_task where status in ( ");
+                    let mut ss = String::from("SELECT id, box_id, origin_path, target_path, task_type, create_at, modify_at, status, err, total, total_size, finished, finished_size FROM cbox_task where status in ( ");
                     for sta in status.into_iter().enumerate() {
                         if sta.0 == 0 {
                             ss = format!("{}{}", ss, sta.1)
@@ -48,6 +49,10 @@ impl App {
                 b.modify_at = row.get(6)?;
                 b.status = row.get(7)?;
                 b.err = row.get(8)?;
+                b.total = row.get(9)?;
+                b.total_size = row.get(10)?;
+                b.finished = row.get(11)?;
+                b.finished_size = row.get(12)?;
                 Ok(b)
             })?;
 
@@ -121,6 +126,27 @@ impl App {
         )?;
         Ok(())
     }
+    pub fn update_task_progress(
+        &self,
+        id: i64,
+        total: u64,
+        total_size: u64,
+        finished: u64,
+        finished_size: u64,
+    ) -> Result<(), Error> {
+        if !self.has_connection() {
+            return Err(Error::NoDBConnection);
+        }
+
+        let c = self.conn.as_ref().unwrap();
+        c.execute(
+            r#"
+            update cbox_task set total = ?1, total_size = ?2, finished = ?3, finished_size = ?4 and where id = ?5
+        "#,
+            params![total, total_size, finished, finished_size, id],
+        )?;
+        Ok(())
+    }
     pub fn record_task_err(&self, id: i64, err: Error) -> Result<(), Error> {
         if !self.has_connection() {
             return Err(Error::NoDBConnection);
@@ -143,9 +169,9 @@ impl App {
         let c = self.conn.as_ref().unwrap();
         c.execute(
             r#"
-            insert into cbox_task (box_id, nonce, origin_path, target_path, task_type, create_at, modify_at, status, err) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+            insert into cbox_task (box_id, nonce, origin_path, target_path, task_type, create_at, modify_at, status, err, total, total_size, finished, finished_size) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
         "#,
-            params![par.box_id, par.nonce, par.origin_path, par.target_path, par.task_type, par.create_at, par.modify_at, par.status, par.err],
+            params![par.box_id, par.nonce, par.origin_path, par.target_path, par.task_type, par.create_at, par.modify_at, par.status, par.err, par.total, par.total_size, par.finished, par.finished_size],
         )?;
         Ok(c.last_insert_rowid())
     }

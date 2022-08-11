@@ -137,7 +137,9 @@ async fn task_loop(
                             }
                         }
                     };
+                    let mut count = 0u64;
                     for upload_chore in task_record.upload_list.iter_mut() {
+                        count += 1;
                         // try to open file
                         let mut fd = match async_std::fs::File::open(&upload_chore.path).await {
                             Ok(fd) => fd,
@@ -221,6 +223,8 @@ async fn task_loop(
                                                     err: task_record.err.clone(),
                                                 }).unwrap_or(());
                                             };
+                                            applock.update_task_progress(task_record.task_id, task_record.total, task_record.total_size, task_record.finished, task_record.finished_size).unwrap_or_else(|e| eprint!("{}", e));
+
                                         }
                                     },
                                     Err(err) => {
@@ -271,6 +275,15 @@ async fn task_loop(
                                 )
                                 .unwrap_or(());
                             };
+                            applock
+                                .update_task_progress(
+                                    task_record.task_id,
+                                    task_record.total,
+                                    task_record.total_size,
+                                    task_record.finished,
+                                    task_record.finished_size,
+                                )
+                                .unwrap_or_else(|e| eprint!("{}", e));
                         }
                     }
                     let applock = cipherbox_app.lock().unwrap();
@@ -320,6 +333,7 @@ async fn task_loop(
                             };
                             applock.create_cbox_obj(&cbo).unwrap();
                         }
+                        println!("task finished: {} - count: {}", task_record.finished, count);
                         applock
                             .update_task_status(task.id, 5)
                             .unwrap_or_else(|e| eprint!("{}", e))
@@ -335,8 +349,7 @@ async fn task_loop(
         match task_err {
             Some(err) => {
                 let applock = cipherbox_app.lock().unwrap();
-                let appref = &*applock;
-                if let Err(err) = appref.record_task_err(err.0, err.1) {
+                if let Err(err) = applock.record_task_err(err.0, err.1) {
                     eprint!("record task err failed: {}", err);
                 }
             }
