@@ -56,16 +56,16 @@ impl App {
 
         c.execute(
             r#"
-            insert into cbox_obj (box_id, name, path, size, origin_path, obj_type, create_at, modify_at, nonce) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+            insert into cbox_obj (box_id, name, path, size, origin_path, obj_type, create_at, modify_at, nonce, parent_id) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
         "#,
-            params![par.box_id, par.name, par.path, par.size, par.origin_path, par.obj_type, par.create_at, par.modify_at, par.nonce],
+            params![par.box_id, par.name, par.path, par.size, par.origin_path, par.obj_type, par.create_at, par.modify_at, par.nonce, par.parent_id],
         )?;
         Ok(c.last_insert_rowid())
     }
     pub fn list_cbox_obj(&self) -> Result<Vec<CBoxObj>, Error> {
         if let Some(c) = &self.conn {
             let mut stmt = c
-                .prepare("SELECT id, box_id, name, path, size, origin_path, obj_type FROM cbox_obj")
+                .prepare("SELECT id, box_id, name, path, size, origin_path, obj_type, create_at, modify_at, parent_id FROM cbox_obj")
                 .unwrap();
             let box_iter = stmt.query_map([], |row| {
                 let mut b = CBoxObj::default();
@@ -76,6 +76,9 @@ impl App {
                 b.size = row.get(4)?;
                 b.origin_path = row.get(5)?;
                 b.obj_type = row.get(6)?;
+                b.create_at = row.get(7)?;
+                b.modify_at = row.get(8)?;
+                b.parent_id = row.get(9)?;
                 Ok(b)
             })?;
 

@@ -289,51 +289,51 @@ mod test {
         // dbg!(&res.bytes().unwrap());
     }
 
-    #[async_std::test]
-    async fn test_upload_car() {
-        let rawdata = to_vec(&RawBlock {
-            data: b"Hush little baby don't say a word".to_vec(),
-        })
-        .unwrap();
-        let buffer: Arc<RwLock<Vec<u8>>> = Default::default();
-        let cid = Cid::new_v1(DAG_CBOR, Blake2b256.digest(&rawdata));
-        let header = CarHeader {
-            roots: vec![cid],
-            version: 1,
-        };
+    // #[async_std::test]
+    // async fn test_upload_car() {
+    //     let rawdata = to_vec(&RawBlock {
+    //         data: b"Hush little baby don't say a word".to_vec(),
+    //     })
+    //     .unwrap();
+    //     let buffer: Arc<RwLock<Vec<u8>>> = Default::default();
+    //     let cid = Cid::new_v1(DAG_CBOR, Blake2b256.digest(&rawdata));
+    //     let header = CarHeader {
+    //         roots: vec![cid],
+    //         version: 1,
+    //     };
 
-        assert_eq!(to_vec(&header).unwrap().len(), 60);
+    //     assert_eq!(to_vec(&header).unwrap().len(), 60);
 
-        let (tx, mut rx) = bounded(10);
+    //     let (tx, mut rx) = bounded(10);
 
-        let buffer_cloned = buffer.clone();
-        let write_task = async_std::task::spawn(async move {
-            header
-                .write_stream_async(&mut *buffer_cloned.write().await, &mut rx)
-                .await
-                .unwrap()
-        });
+    //     let buffer_cloned = buffer.clone();
+    //     let write_task = async_std::task::spawn(async move {
+    //         header
+    //             .write_stream_async(&mut *buffer_cloned.write().await, &mut rx)
+    //             .await
+    //             .unwrap()
+    //     });
 
-        tx.send((cid, rawdata.clone())).await.unwrap();
-        drop(tx);
-        write_task.await;
+    //     tx.send((cid, rawdata.clone())).await.unwrap();
+    //     drop(tx);
+    //     write_task.await;
 
-        let buffer: Vec<_> = buffer.read().await.clone();
+    //     let buffer: Vec<_> = buffer.read().await.clone();
 
-        let client = reqwest::blocking::Client::new();
-        let res = client
-            .post("https://api.web3.storage/car")
-            .header(reqwest::header::CONTENT_TYPE, "application/vnd.ipld.car")
-            .header("Authorization", "Bearer ...")
-            .body(buffer)
-            .send()
-            .unwrap();
+    //     let client = reqwest::blocking::Client::new();
+    //     let res = client
+    //         .post("https://api.web3.storage/car")
+    //         .header(reqwest::header::CONTENT_TYPE, "application/vnd.ipld.car")
+    //         .header("Authorization", "Bearer ...")
+    //         .body(buffer)
+    //         .send()
+    //         .unwrap();
 
-        if res.status().is_success() {
-            eprintln!("upload success");
-        } else {
-            eprintln!("upload failed");
-        }
-        println!("{:?}, expected cid: {}", &res.bytes().unwrap(), cid);
-    }
+    //     if res.status().is_success() {
+    //         eprintln!("upload success");
+    //     } else {
+    //         eprintln!("upload failed");
+    //     }
+    //     println!("{:?}, expected cid: {}", &res.bytes().unwrap(), cid);
+    // }
 }
