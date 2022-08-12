@@ -80,15 +80,26 @@ async fn task_control_loop(cipherbox_app: Arc<Mutex<App>>, mut rx: Receiver<Cont
                         }
                         ControlEvent::Resume(task_id) => {
                             println!("resume {}", task_id);
+                            let applock = cipherbox_app.lock().unwrap();
+                            applock.resume_task(task_id);
                         }
                         ControlEvent::Pause(task_id) => {
                             println!("pause {}", task_id);
+                            for (_, v) in channels.iter() {
+                                v.send(ControlEvent::Pause(task_id)).await.unwrap_or_else(|e| eprint!("{}", e));
+                            }
                         }
                         ControlEvent::PauseAll => {
                             println!("pause all tasks");
+                            for (_, v) in channels.iter() {
+                                v.send(ControlEvent::PauseAll).await.unwrap_or_else(|e| eprint!("{}", e));
+                            }
                         }
                         ControlEvent::Cancel(task_id) => {
                             println!("cancel {}", task_id);
+                            for (_, v) in channels.iter() {
+                                v.send(ControlEvent::Cancel(task_id)).await.unwrap_or_else(|e| eprint!("{}", e));
+                            }
                         }
                     }
                 }
@@ -162,14 +173,20 @@ async fn task_loop(
                                     Some(ev) => match ev {
                                             ControlEvent::Pause(id) => {
                                                 if id == task.id {
+                                                    let applock = cipherbox_app.lock().unwrap();
+                                                    applock.update_task_status(id, 6).unwrap_or_default();
                                                     break 'Outer;
                                                 }
                                             }
                                             ControlEvent::PauseAll => {
+                                                let applock = cipherbox_app.lock().unwrap();
+                                                applock.update_task_status(task.id, 6).unwrap_or_default();
                                                 break 'Outer;
                                             }
                                             ControlEvent::Cancel(id) => {
                                                 if id == task.id {
+                                                    let applock = cipherbox_app.lock().unwrap();
+                                                    applock.update_task_status(id, 7).unwrap_or_default();
                                                     break 'Outer;
                                                 }
                                             }

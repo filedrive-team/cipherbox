@@ -95,6 +95,55 @@ impl App {
             None
         }
     }
+    pub fn resume_task(&self, id: i64) {
+        if let Some(ta) = self.get_task_by_id(id) {
+            match ta.status {
+                6 | 7 | 9 => {
+                    self.update_task_status(ta.id, 0)
+                        .unwrap_or_else(|e| eprint!("failed to resume task: {}, {}", ta.id, e));
+                }
+                _ => {
+                    eprint!("resume a task in unexpected status: {}", ta.status);
+                }
+            }
+        }
+    }
+    pub fn get_task_by_id(&self, id: i64) -> Option<CBoxTask> {
+        if let Some(c) = &self.conn {
+            let mut stmt = c
+                .prepare("SELECT id, box_id, nonce, origin_path, target_path, task_type, status FROM cbox_task where id = ?1")
+                .unwrap();
+            let box_iter = match stmt.query_map([id], |row| {
+                let mut b = CBoxTask::default();
+                b.id = row.get(0)?;
+                b.box_id = row.get(1)?;
+                b.nonce = row.get(2)?;
+                b.origin_path = row.get(3)?;
+                b.target_path = row.get(4)?;
+                b.task_type = row.get(5)?;
+                b.status = row.get(6)?;
+                Ok(b)
+            }) {
+                Ok(item) => item,
+                Err(_) => return None,
+            };
+
+            let mut list: Vec<CBoxTask> = Vec::new();
+            for b in box_iter {
+                if let Ok(record) = b {
+                    list.push(record);
+                }
+            }
+            if list.len() == 0 {
+                None
+            } else {
+                let task = list.remove(0);
+                Some(task)
+            }
+        } else {
+            None
+        }
+    }
     pub fn update_task_status(&self, id: i64, status: isize) -> Result<(), Error> {
         if !self.has_connection() {
             return Err(Error::NoDBConnection);
