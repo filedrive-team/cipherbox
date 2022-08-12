@@ -2,8 +2,9 @@ import { invoke } from '@tauri-apps/api';
 import { listen } from '@tauri-apps/api/event';
 import { action, makeObservable, observable, runInAction } from 'mobx';
 import _ from 'lodash';
+import { exists } from 'tauri-plugin-fs-extra-api';
 
-class BackupStore {
+class TaskStore {
   /**
    * @type [{
    * start:boolean,
@@ -49,6 +50,15 @@ class BackupStore {
    */
   alreadyData = [];
 
+  /**
+   * @type [{exists:boolean,boxId:number,cid:string,createAt:number,
+   * hash:string,id:number,modifyAt:number,name:string,
+   * objType:number,originPath:string,path:string,size:number,
+   * status:number
+   * }]
+   */
+  boxData = [];
+
   constructor() {
     makeObservable(this, {
       data: observable,
@@ -59,8 +69,15 @@ class BackupStore {
     });
 
     listen('task_update', (event) => {
-      console.log('+==============event=====00======', event.payload);
       if (event.event === 'task_update') {
+        if (event.payload.finished === 1) {
+          this.fetchAreadyData();
+          this.fetchData();
+          this.fetchBoxData();
+        }
+        if (this.data.length === 0) {
+          this.fetchData();
+        }
         this.SET_CHANGE_DATA(event.payload).then();
       }
     });
@@ -73,10 +90,7 @@ class BackupStore {
   async SET_CHANGE_DATA(item) {
     let _data = _.clone(this.data);
     _data.map((value, index) => {
-      console.log('+=============000=======', value.id, item.task_id);
       if (value.id === item.task_id) {
-        console.log('+============111========', item.task_id);
-
         value.totalSize = item.total_size;
         value.finishedSize = item.finished_size;
       }
@@ -94,8 +108,6 @@ class BackupStore {
     });
     const result = taskList.result;
 
-    console.log('========fetchData=======', result);
-
     runInAction(() => {
       this.data = result;
     });
@@ -104,13 +116,49 @@ class BackupStore {
   async fetchAreadyData() {
     const taskList = await invoke('task_list', { status: [5] });
     const result = taskList.result;
-    console.log('========fetchAreadyData=======', result);
 
     runInAction(() => {
       this.alreadyData = result;
     });
   }
+
+  async fetchBoxData() {
+    /**
+     * @type {
+     * {activeBox:{name:string,accessToken:string,id:number
+     * ,provider:number},
+     * hasPasswordSet:boolean,sessionExpired:boolean}}
+     */
+    const appInfo = (await invoke('app_info')).result;
+
+    /**
+     *
+     * @type {[{exists:boolean,boxId:number,cid:string,createAt:number,
+     * hash:string,id:number,modifyAt:number,name:string,
+     * objType:number,originPath:string,path:string,size:number,
+     * status:number
+     * }]}
+     */
+    const response = (
+      await invoke('box_obj_list', {
+        boxId: appInfo.activeBox.id,
+        lastId: 0,
+      })
+    ).result;
+
+    const response_map = await Promise.all(
+      response.map(async (value, index) => {
+        const _exists = await exists(value.originPath);
+        value.exists = _exists;
+        return value;
+      }),
+    );
+
+    runInAction(() => {
+      this.boxData = response_map;
+    });
+  }
 }
 
-const backupStore = new BackupStore();
-export default backupStore;
+const taskStore = new TaskStore();
+export default taskStore;

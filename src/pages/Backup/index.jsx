@@ -14,9 +14,11 @@ import { ReactComponent as DeleteIcon } from '@/assets/backup/delete.svg';
 import { ReactComponent as StartIcon } from '@/assets/backup/start.svg';
 import { ReactComponent as StopIcon } from '@/assets/backup/stop.svg';
 import { useEffect } from 'react';
-import backupStore from '@/store/modules/backup';
+import taskStore from '@/store/modules/task';
 import { observer } from 'mobx-react';
 import BigNumber from 'bignumber.js';
+import prettyBytes from 'pretty-bytes';
+import dayjs from 'dayjs';
 const tabData = [
   {
     icon: copyIcon,
@@ -27,35 +29,6 @@ const tabData = [
     icon: switchIcon,
     bg: switchButton,
     name: '已备份',
-  },
-];
-
-const alreadyColumns = [
-  {
-    title: '文件名',
-    dataIndex: 'name',
-    key: 'name',
-    render: (text) => <div>{text}</div>,
-  },
-  {
-    title: '文件大小',
-    dataIndex: 'size',
-    key: 'size',
-  },
-  {
-    title: '备份时间',
-    dataIndex: 'createAt',
-    key: 'createAt',
-  },
-  {
-    title: '状态',
-    dataIndex: 'operation',
-    key: 'operation',
-    width: '160',
-    align: 'right',
-    render: (_, value) => {
-      return <div className={styles.operationWrap}>已备份</div>;
-    },
   },
 ];
 
@@ -76,10 +49,10 @@ const Backup = () => {
     },
     {
       title: 'Size',
-      dataIndex: 'size',
-      key: 'size',
+      dataIndex: 'totalSize',
+      key: 'totalSize',
       align: 'center',
-      render: (text) => <div>{'-'}</div>,
+      render: (value) => <div>{value === 0 ? '-' : prettyBytes(value)}</div>,
     },
     {
       title: '进度',
@@ -123,7 +96,7 @@ const Backup = () => {
           <div className={styles.operationWrap}>
             <DeleteIcon
               onClick={() => {
-                console.log('====DeleteIcon====++++=', backupStore.data);
+                console.log('====DeleteIcon====++++=', taskStore.data);
               }}
             />
 
@@ -146,11 +119,52 @@ const Backup = () => {
     },
   ];
 
+  const alreadyColumns = [
+    {
+      title: 'Path',
+      dataIndex: 'originPath',
+      key: 'originPath',
+      width: 100,
+      render: (text) => {
+        return (
+          <Tooltip trigger={'click'} title={text}>
+            <div className={classNames(styles.path)}>{text}</div>
+          </Tooltip>
+        );
+      },
+    },
+    {
+      title: 'Size',
+      dataIndex: 'totalSize',
+      key: 'totalSize',
+      align: 'center',
+      render: (value) => <div>{value === 0 ? '-' : prettyBytes(value)}</div>,
+    },
+    {
+      title: '备份时间',
+      dataIndex: 'createAt',
+      key: 'createAt',
+      render: (value) => (
+        <div>{dayjs(new Date(value)).format('YYYY/MM/DD HH:mm')}</div>
+      ),
+    },
+    {
+      title: '状态',
+      dataIndex: 'operation',
+      key: 'operation',
+      width: '160',
+      align: 'right',
+      render: (_, value) => {
+        return <div className={styles.operationWrap}>已备份</div>;
+      },
+    },
+  ];
+
   const [currentActive, setCurrentActive] = useState(0);
 
   async function task() {
-    backupStore.fetchAreadyData();
-    backupStore.fetchData();
+    taskStore.fetchAreadyData();
+    taskStore.fetchData();
   }
 
   useEffect(() => {
@@ -180,26 +194,26 @@ const Backup = () => {
           <>
             <List
               columns={columns}
-              dataSource={backupStore.data}
+              dataSource={taskStore.data}
               rowKey={(value) => {
                 return value.id;
               }}
             />
             <div className={styles.listBottom}>
-              {backupStore.data.length > 10 ? <PageControl total={50} /> : null}
+              {taskStore.data.length > 10 ? <PageControl total={50} /> : null}
             </div>
           </>
         ) : (
           <>
             <List
               columns={alreadyColumns}
-              dataSource={backupStore.alreadyData}
+              dataSource={taskStore.alreadyData}
               rowKey={(value) => {
                 return value.id;
               }}
             />
             <div className={styles.listBottom}>
-              {backupStore.alreadyData.length > 10 ? (
+              {taskStore.alreadyData.length > 10 ? (
                 <PageControl total={50} />
               ) : null}
             </div>

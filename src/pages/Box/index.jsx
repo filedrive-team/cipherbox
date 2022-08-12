@@ -24,6 +24,7 @@ import PageControl from '@/components/PageControl';
 import List from '@/components/List';
 import prettyBytes from 'pretty-bytes';
 import dayjs from 'dayjs';
+import taskStore from '@/store/modules/task';
 
 const tabData = [
   {
@@ -38,55 +39,53 @@ const tabData = [
   },
 ];
 
-const columns = [
-  {
-    title: '文件名',
-    dataIndex: 'name',
-    key: 'name',
-    render: (text) => <div>{text}</div>,
-  },
-  {
-    title: '文件大小',
-    dataIndex: 'size',
-    key: 'size',
-    render: (value) => <div>{prettyBytes(value)}</div>,
-  },
-  {
-    title: '备份时间',
-    dataIndex: 'createAt',
-    key: 'createAt',
-    render: (value) => (
-      <div>{dayjs(new Date(value)).format('YYYY/MM/DD HH:mm')}</div>
-    ),
-  },
-  {
-    title: '操作',
-    dataIndex: 'operate',
-    key: 'operate',
-    render: (_, value) => {
-      if (value.exists) {
-        return (
-          <div
-            onClick={async () => {
-              await new shell.Command('show-in-finder', [
-                '-R',
-                value.originPath,
-              ]).spawn();
-            }}
-          >
-            <OpenIcon />
-          </div>
-        );
-      } else {
-      }
-      return <DownLoadIcon />;
-    },
-  },
-];
-
 const Box = () => {
+  const columns = [
+    {
+      title: '文件名',
+      dataIndex: 'name',
+      key: 'name',
+      render: (text) => <div>{text}</div>,
+    },
+    {
+      title: '文件大小',
+      dataIndex: 'size',
+      key: 'size',
+      render: (value) => <div>{prettyBytes(value)}</div>,
+    },
+    {
+      title: '备份时间',
+      dataIndex: 'createAt',
+      key: 'createAt',
+      render: (value) => (
+        <div>{dayjs(new Date(value)).format('YYYY/MM/DD HH:mm')}</div>
+      ),
+    },
+    {
+      title: '操作',
+      dataIndex: 'operate',
+      key: 'operate',
+      render: (_, value) => {
+        if (value.exists) {
+          return (
+            <div
+              onClick={async () => {
+                await new shell.Command('show-in-finder', [
+                  '-R',
+                  value.originPath,
+                ]).spawn();
+              }}
+            >
+              <OpenIcon />
+            </div>
+          );
+        } else {
+        }
+        return <DownLoadIcon />;
+      },
+    },
+  ];
   const [menu, setMenu] = useState();
-  const [data, setData] = useState([]);
 
   async function f() {
     /**
@@ -158,45 +157,13 @@ const Box = () => {
     setMenu(<Menu items={boxItem} />);
   }
 
-  async function f1() {
-    /**
-     * @type {
-     * {activeBox:{name:string,accessToken:string,id:number
-     * ,provider:number},
-     * hasPasswordSet:boolean,sessionExpired:boolean}}
-     */
-    const appInfo = (await invoke('app_info')).result;
-    /**
-     *
-     * @type {[{exists:boolean,boxId:number,cid:string,createAt:number,
-     * hash:string,id:number,modifyAt:number,name:string,
-     * objType:number,originPath:string,path:string,size:number,
-     * status:number
-     * }]}
-     */
-    const response = (
-      await invoke('box_obj_list', {
-        boxId: appInfo.activeBox.id,
-        lastId: 0,
-      })
-    ).result;
-    const response_map = await Promise.all(
-      response.map(async (value, index) => {
-        const _exists = await exists(value.originPath);
-        value.exists = _exists;
-        return value;
-      }),
-    );
-    setData(response_map);
-  }
-
   useEffect(() => {
     f();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    f1();
+    taskStore.fetchBoxData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -240,27 +207,11 @@ const Box = () => {
                    * hasPasswordSet:boolean,sessionExpired:boolean}}
                    */
                   const appInfo = (await invoke('app_info')).result;
-
-                  const response = await invoke('backup', {
+                  await invoke('backup', {
                     boxId: appInfo.activeBox.id,
                     targets: [path],
                   });
-
-                  /**
-                   *
-                   * @type {[{boxId:number,cid:string,createAt:number,
-                   * hash:string,id:number,modifyAt:number,name:string,
-                   * objType:number,originPath:string,path:string,size:number,
-                   * status:number
-                   * }]}
-                   */
-                  const response1 = (
-                    await invoke('box_obj_list', {
-                      boxId: appInfo.activeBox.id,
-                      lastId: 0,
-                    })
-                  ).result;
-                  setData(response1);
+                  taskStore.fetchBoxData();
                 }}
               >
                 <div className={styles.tabContent}>{value.name}</div>
@@ -271,13 +222,13 @@ const Box = () => {
         <div className={styles.listWrap}>
           <List
             columns={columns}
-            dataSource={data}
+            dataSource={taskStore.boxData}
             rowKey={(value) => {
               return value.id;
             }}
           />
           <div className={styles.listBottom}>
-            {data.length > 10 ? <PageControl total={50} /> : null}
+            {taskStore.boxData.length > 10 ? <PageControl total={50} /> : null}
           </div>
         </div>
       </div>
