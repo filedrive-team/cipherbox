@@ -148,7 +148,7 @@ pub struct CBoxTask {
     pub origin_path: String,
     // target path to do recover
     pub target_path: String,
-    // status - 0 in queue | 1 processing  | 5 finished | 6 paused | 9 failed
+    // status - 0 in queue | 1 processing  | 5 finished | 6 paused | 7 canceled | 9 failed
     pub status: u8,
     pub total: u64,
     pub total_size: u64,

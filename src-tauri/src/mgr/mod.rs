@@ -67,7 +67,6 @@ pub async fn web3storage_upload(data: Vec<u8>, cbox: &CBox) -> Result<Cid, Error
         eprintln!("upload failed");
         return Err(Error::Other(format!("{:?}", &res.bytes().unwrap())));
     }
-    //eprintln!("upload success");
     println!("{:?}, expected cid: {}", &res.bytes().unwrap(), cid);
     Ok(cid)
 }

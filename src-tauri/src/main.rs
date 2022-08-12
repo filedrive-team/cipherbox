@@ -185,18 +185,24 @@ async fn task_loop(
                                     },
                                     Ok(n) => {
                                         let encrypted_data = {
-                                            let applock = cipherbox_app.lock().unwrap();
-                                            let appref = &*applock;
-                                            let key = appref.user_key.as_ref();
-
-                                            if key.is_none() {
-                                                eprint!("unexpected user key is none");
-                                                task_err = Some((task_record.task_id, Error::Other("unexpected user key is none".into())));
-                                                break;
-                                            }
                                             let mut d = vec![0u8;n];
-                                            encrypt_or_decrypt(&buffer[..n], &mut d, key.unwrap(), &task.nonce);
-                                            d
+                                            if !cbox.encrypt_data { // not encrypted
+                                                d.copy_from_slice(&buffer[..n]);
+                                                d
+                                            } else {
+                                                let applock = cipherbox_app.lock().unwrap();
+                                                let appref = &*applock;
+                                                let key = appref.user_key.as_ref();
+
+                                                if key.is_none() {
+                                                    eprint!("unexpected user key is none");
+                                                    task_err = Some((task_record.task_id, Error::Other("unexpected user key is none".into())));
+                                                    break;
+                                                }
+
+                                                encrypt_or_decrypt(&buffer[..n], &mut d, key.unwrap(), &task.nonce);
+                                                d
+                                            }
                                         };
 
                                         match web3storage_upload(encrypted_data, &cbox).await {
@@ -478,49 +484,53 @@ mod test {
         uk
     }
 
-    #[async_std::test]
-    async fn test_main() {
-        //let temp_dir = std::env::temp_dir();
-        let temp_dir = std::path::PathBuf::from("/Users/lifeng/cipherbox-test");
-        // init a App
-        let mut app = App::default();
-        let (tx, rx) = bounded(10);
-        app.task_trigger = Some(tx);
-        app.setup(temp_dir.as_os_str().to_owned());
-        // init db
-        app.init_db().expect("failed to init sqlite");
-        app.set_user_key(test_user_key());
+    // #[async_std::test]
+    // async fn test_main() {
+    //     //let temp_dir = std::env::temp_dir();
+    //     let temp_dir = std::path::PathBuf::from("/Users/lifeng/cipherbox-test");
+    //     // init a App
+    //     let mut app = App::default();
+    //     let (tx, rx) = bounded(10);
+    //     app.task_trigger = Some(tx);
+    //     app.setup(temp_dir.as_os_str().to_owned());
+    //     // init db
+    //     app.init_db().expect("failed to init sqlite");
+    //     app.set_user_key(test_user_key());
 
-        // create a Cbox
-        let cbpa01: mgr::CreateCboxParams = serde_json::from_str(
-            r#"
-            {
-                "name": "cbox_x_00002",
-                "encryptData": true,
-                "provider": 1,
-                "accessToken": "token:for:web3.storage"
-            }
-        "#,
-        )
-        .expect("failed tp do json deserialize");
-        let new_box01 = app.create_cbox(cbpa01).expect("failed to create cbox");
-        // wrap app into Arc/Mutex for multipule thread sharing
-        let cipherbox_app = Arc::new(Mutex::new(app));
+    //     // create a Cbox
+    //     let cbpa01: mgr::CreateCboxParams = serde_json::from_str(
+    //         r#"
+    //         {
+    //             "name": "cbox_x_00002",
+    //             "encryptData": true,
+    //             "provider": 1,
+    //             "accessToken": "token:for:web3.storage"
+    //         }
+    //     "#,
+    //     )
+    //     .expect("failed tp do json deserialize");
+    //     let new_box01 = app.create_cbox(cbpa01).expect("failed to create cbox");
+    //     // wrap app into Arc/Mutex for multipule thread sharing
+    //     let cipherbox_app = Arc::new(Mutex::new(app));
 
-        // spawn a thread
-        // loop for trigger or pause async task
-        let hd = async_std::task::spawn(task_control_loop(cipherbox_app.clone(), rx));
-        async_std::task::spawn(async move {
-            let applock = cipherbox_app.lock().unwrap();
+    //     // spawn a thread
+    //     // loop for trigger or pause async task
+    //     let hd = async_std::task::spawn(task_control_loop(cipherbox_app.clone(), rx));
+    //     async_std::task::spawn(async move {
+    //         let applock = cipherbox_app.lock().unwrap();
 
-            applock
-                .add_backup_tasks(
-                    new_box01.id,
-                    vec![String::from("/Users/lifeng/nc62/psserver")],
-                )
-                .unwrap();
-        });
+    //         applock
+    //             .add_backup_tasks(
+    //                 new_box01.id,
+    //                 vec![
+    //                     String::from("/Users/lifeng/nc62/l1/l2/amba-10001-13000.list"),
+    //                     String::from("/Users/lifeng/nc62/l1/l2/amba-3155-7000.list"),
+    //                     String::from("/Users/lifeng/nc62/l1/l2/amba-7001-10000.list"),
+    //                 ],
+    //             )
+    //             .unwrap();
+    //     });
 
-        hd.await;
-    }
+    //     hd.await;
+    // }
 }

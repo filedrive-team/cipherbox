@@ -19,17 +19,18 @@ impl App {
                 None => break,
             };
         }
-        let mut last_idx = dir_list.len();
-        while last_idx > 0 {
-            last_idx -= 1;
-            match self.get_cbox_obj(box_id, &dir_list[last_idx]) {
+        for p in dir_list.into_iter().rev() {
+            if p == "" {
+                continue;
+            }
+            match self.get_cbox_obj(box_id, &p) {
                 Some(obj) => {
                     parent_id = obj.id;
                 }
                 None => {
                     let mut obj = CBoxObj::default();
                     obj.box_id = box_id;
-                    obj.path = dir_list[last_idx].clone();
+                    obj.path = p;
                     obj.obj_type = 1;
                     obj.create_at = current().expect("failed to get current timestamp");
                     obj.modify_at = obj.create_at;
@@ -45,7 +46,6 @@ impl App {
                     };
                 }
             }
-            last_idx -= 1;
         }
         Ok(parent_id)
     }
@@ -97,7 +97,13 @@ impl App {
             let mut stmt = c
                 .prepare("SELECT id, box_id, name, path, size, origin_path, obj_type FROM cbox_obj where box_id = ?1 and path = ?2")
                 .unwrap();
-            stmt.execute(params![box_id, path]).unwrap();
+            match stmt.execute(params![box_id, path]) {
+                Ok(_) => {}
+                Err(e) => {
+                    eprint!("{}", e);
+                    return None;
+                }
+            };
             let box_iter = match stmt.query_map([], |row| {
                 let mut b = CBoxObj::default();
                 b.id = row.get(0)?;

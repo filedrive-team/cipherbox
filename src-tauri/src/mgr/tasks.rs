@@ -109,6 +109,20 @@ impl App {
         )?;
         Ok(())
     }
+    fn resume_tasks(&self) {
+        if !self.has_connection() {
+            return;
+        }
+
+        let c = self.conn.as_ref().unwrap();
+        c.execute(
+            r#"
+            update cbox_task set status = 0 where status = 1
+        "#,
+            [],
+        )
+        .unwrap_or_default();
+    }
     pub fn update_task_progress(
         &self,
         id: i64,
