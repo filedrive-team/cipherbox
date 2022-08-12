@@ -76,7 +76,6 @@ impl App {
                 COMMIT;"#,
         )?;
         self.conn = Some(conn);
-        self.resume_tasks();
         Ok(())
     }
     pub fn has_connection(&self) -> bool {

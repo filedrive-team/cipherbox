@@ -443,6 +443,7 @@ async fn main() -> () {
                 let cipherboxapp = &mut *cipherbox_app_clone.lock().unwrap();
                 cipherboxapp.setup(app_dir);
                 cipherboxapp.init_db().expect("failed to open sqlite");
+                cipherboxapp.resume_tasks();
                 if let Err(e) = cipherboxapp.read_cache() {
                     eprint!("{}", e);
                 }
