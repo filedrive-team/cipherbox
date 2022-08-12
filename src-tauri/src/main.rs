@@ -39,7 +39,7 @@ pub static PROGRESS_EMIT: &str = "task_update";
 
 async fn task_control_loop(cipherbox_app: Arc<Mutex<App>>, mut rx: Receiver<ControlEvent>) {
     println!("into task control loop");
-    let concurrent_num = 1;
+    let concurrent_num = 2;
     let mut chan_id: i32 = 1;
     let (relaese_chan_tx, mut release_chan_rx) = bounded(1);
     let mut channels: HashMap<i32, Sender<ControlEvent>> = HashMap::new();
@@ -535,17 +535,27 @@ mod test {
     //     let hd = async_std::task::spawn(task_control_loop(cipherbox_app.clone(), rx));
     //     async_std::task::spawn(async move {
     //         let applock = cipherbox_app.lock().unwrap();
-
     //         applock
     //             .add_backup_tasks(
     //                 new_box01.id,
     //                 vec![
-    //                     String::from("/Users/lifeng/nc62/l1/l2/amba-10001-13000.list"),
-    //                     String::from("/Users/lifeng/nc62/l1/l2/amba-3155-7000.list"),
-    //                     String::from("/Users/lifeng/nc62/l1/l2/amba-7001-10000.list"),
+    //                     String::from("/Users/lifeng/nc62/piecestore"),
+    //                     String::from("/Users/lifeng/nc62/pshelper"),
+    //                     String::from("/Users/lifeng/nc62/deal-maker"),
+    //                     String::from("/Users/lifeng/nc62/filejoy"),
     //                 ],
     //             )
     //             .unwrap();
+
+    //         std::thread::sleep_ms(2000);
+    //         async_std::task::block_on(
+    //             applock
+    //                 .task_trigger
+    //                 .as_ref()
+    //                 .unwrap()
+    //                 .send(ControlEvent::Pause(1)),
+    //         )
+    //         .unwrap();
     //     });
 
     //     hd.await;

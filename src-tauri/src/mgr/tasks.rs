@@ -1,6 +1,4 @@
 use super::*;
-use async_std::task::Task;
-use tauri::Manager;
 
 impl App {
     pub fn list_task(&self, status: Vec<i32>) -> Result<Vec<CBoxTask>, Error> {
@@ -158,7 +156,7 @@ impl App {
         )?;
         Ok(())
     }
-    fn resume_tasks(&self) {
+    pub fn resume_tasks(&self) {
         if !self.has_connection() {
             return;
         }

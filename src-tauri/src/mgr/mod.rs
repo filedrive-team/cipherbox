@@ -53,7 +53,6 @@ pub async fn web3storage_upload(data: Vec<u8>, cbox: &CBox) -> Result<Cid, Error
     write_task.await;
 
     let buffer: Vec<_> = buffer.read().await.clone();
-
     let client = reqwest::blocking::Client::new();
     let res = client
         .post("https://api.web3.storage/car")
