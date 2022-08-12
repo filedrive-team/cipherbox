@@ -15,8 +15,6 @@ import { invoke } from '@tauri-apps/api';
 import { useEffect, useState } from 'react';
 import { open } from '@tauri-apps/api/dialog';
 import { RouterPath } from '@/router';
-import { exists } from 'tauri-plugin-fs-extra-api';
-
 import { ReactComponent as DownLoadIcon } from '@/assets/box/download.svg';
 import { ReactComponent as OpenIcon } from '@/assets/box/open.svg';
 import { shell } from '@tauri-apps/api';
@@ -211,7 +209,6 @@ const Box = () => {
                     boxId: appInfo.activeBox.id,
                     targets: [path],
                   });
-                  taskStore.fetchBoxData();
                 }}
               >
                 <div className={styles.tabContent}>{value.name}</div>

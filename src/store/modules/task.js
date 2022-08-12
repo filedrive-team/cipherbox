@@ -63,14 +63,17 @@ class TaskStore {
     makeObservable(this, {
       data: observable,
       alreadyData: observable,
+      boxData: observable,
       fetchData: action,
       fetchAreadyData: action,
       SET_CHANGE_DATA: action,
+      fetchBoxData: action,
     });
 
     listen('task_update', (event) => {
       if (event.event === 'task_update') {
         if (event.payload.finished === 1) {
+          console.log('===================task_update+++++');
           this.fetchAreadyData();
           this.fetchData();
           this.fetchBoxData();
@@ -154,6 +157,7 @@ class TaskStore {
       }),
     );
 
+    console.log('+==================response_map=========', response_map);
     runInAction(() => {
       this.boxData = response_map;
     });
