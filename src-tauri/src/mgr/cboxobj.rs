@@ -57,9 +57,9 @@ impl App {
 
         c.execute(
             r#"
-            insert into cbox_obj (box_id, name, path, size, origin_path, obj_type, create_at, modify_at, nonce, parent_id) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+            insert into cbox_obj (box_id, cid, hash, name, path, size, origin_path, obj_type, create_at, modify_at, nonce, parent_id) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
         "#,
-            params![par.box_id, par.name, par.path, par.size, par.origin_path, par.obj_type, par.create_at, par.modify_at, par.nonce, par.parent_id],
+            params![par.box_id, par.cid, par.hash, par.name, par.path, par.size, par.origin_path, par.obj_type, par.create_at, par.modify_at, par.nonce, par.parent_id],
         )?;
         Ok(c.last_insert_rowid())
     }
@@ -95,7 +95,7 @@ impl App {
     pub fn get_cbox_obj(&self, box_id: i64, path: &str) -> Option<CBoxObj> {
         if let Some(c) = &self.conn {
             let mut stmt = c
-                .prepare("id, box_id, cid, hash, name, path, size, origin_path, obj_type, create_at, modify_at FROM cbox_obj where box_id = ?1 and path = ?2")
+                .prepare("id, box_id, cid, hash, name, path, size, origin_path, obj_type, create_at, modify_at, nonce FROM cbox_obj where box_id = ?1 and path = ?2")
                 .unwrap();
             match stmt.execute(params![box_id, path]) {
                 Ok(_) => {}
@@ -117,6 +117,7 @@ impl App {
                 b.obj_type = row.get(8)?;
                 b.create_at = row.get(9)?;
                 b.modify_at = row.get(10)?;
+                b.nonce = row.get(11)?;
                 Ok(b)
             }) {
                 Ok(it) => it,
@@ -140,46 +141,31 @@ impl App {
     }
     pub fn get_cbox_obj_by_id(&self, id: i64) -> Option<CBoxObj> {
         if let Some(c) = &self.conn {
-            let mut stmt = c
-                .prepare("SELECT id, box_id, cid, hash, name, path, size, origin_path, obj_type, create_at, modify_at FROM cbox_obj where id = ?1")
-                .unwrap();
-            match stmt.execute(params![id]) {
-                Ok(_) => {}
-                Err(e) => {
-                    eprint!("{}", e);
-                    return None;
-                }
-            };
-            let box_iter = match stmt.query_map([], |row| {
-                let mut b = CBoxObj::default();
-                b.id = row.get(0)?;
-                b.box_id = row.get(1)?;
-                b.cid = row.get(2)?;
-                b.hash = row.get(3)?;
-                b.name = row.get(4)?;
-                b.path = row.get(5)?;
-                b.size = row.get(6)?;
-                b.origin_path = row.get(7)?;
-                b.obj_type = row.get(8)?;
-                b.create_at = row.get(9)?;
-                b.modify_at = row.get(10)?;
-                Ok(b)
-            }) {
-                Ok(it) => it,
-                Err(err) => {
-                    eprint!("{}", err);
-                    return None;
-                }
+            let b = match c.query_row(
+                "SELECT id, box_id, cid, hash, name, path, size, origin_path, obj_type, create_at, modify_at, nonce FROM cbox_obj where id = ?1",
+                params![id],
+                |row| {
+                    let mut b = CBoxObj::default();
+                    b.id = row.get(0)?;
+                    b.box_id = row.get(1)?;
+                    b.cid = row.get(2)?;
+                    b.hash = row.get(3)?;
+                    b.name = row.get(4)?;
+                    b.path = row.get(5)?;
+                    b.size = row.get(6)?;
+                    b.origin_path = row.get(7)?;
+                    b.obj_type = row.get(8)?;
+                    b.create_at = row.get(9)?;
+                    b.modify_at = row.get(10)?;
+                    b.nonce = row.get(11)?;
+                    Ok(b)
+                },
+            ){
+                Ok(obj) => obj,
+                Err(_) => return None  
             };
 
-            let mut list: Vec<CBoxObj> = Vec::new();
-            for b in box_iter {
-                list.push(b.unwrap())
-            }
-            if list.len() == 0 {
-                return None;
-            }
-            Some(list.remove(0))
+            Some(b)
         } else {
             None
         }

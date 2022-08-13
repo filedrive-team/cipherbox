@@ -101,7 +101,7 @@ pub async fn web3storage_upload(data: Vec<u8>, cbox: &CBox) -> Result<Cid, Error
 }
 
 pub fn init_task_record(
-    task: &CBoxTask,
+    task: &mut CBoxTask,
     cipherbox_app: Arc<Mutex<App>>,
 ) -> Result<TaskRecord, Error> {
     if task.task_type != 0 {
@@ -119,6 +119,7 @@ pub fn init_task_record(
         }
         let chunk_ref = web3storage_download_sync(obj.cid)?;
         let chunk_ref: Chunks = from_slice(&chunk_ref)?;
+        task.nonce = obj.nonce;
 
         Ok(TaskRecord {
             box_id: task.box_id,

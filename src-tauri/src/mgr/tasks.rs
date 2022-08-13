@@ -4,9 +4,9 @@ impl App {
     pub fn list_task(&self, status: Vec<i32>) -> Result<Vec<CBoxTask>, Error> {
         if let Some(c) = &self.conn {
             let sqlstr = match status.len() {
-                0 => "SELECT id, box_id, origin_path, target_path, task_type, create_at, modify_at, status, err, total, total_size, finished, finished_size FROM cbox_task order by id desc".to_string(),
+                0 => "SELECT id, box_id, origin_path, target_path, task_type, create_at, modify_at, status, err, total, total_size, finished, finished_size, obj_id FROM cbox_task order by id desc".to_string(),
                 _ => {
-                    let mut ss = String::from("SELECT id, box_id, origin_path, target_path, task_type, create_at, modify_at, status, err, total, total_size, finished, finished_size FROM cbox_task where status in ( ");
+                    let mut ss = String::from("SELECT id, box_id, origin_path, target_path, task_type, create_at, modify_at, status, err, total, total_size, finished, finished_size, obj_id FROM cbox_task where status in ( ");
                     for sta in status.into_iter().enumerate() {
                         if sta.0 == 0 {
                             ss = format!("{}{}", ss, sta.1)
@@ -34,6 +34,7 @@ impl App {
                 b.total_size = row.get(10)?;
                 b.finished = row.get(11)?;
                 b.finished_size = row.get(12)?;
+                b.obj_id = row.get(13)?;
                 Ok(b)
             })?;
 
@@ -49,7 +50,7 @@ impl App {
     pub fn get_pending_task(&self) -> Option<CBoxTask> {
         if let Some(c) = &self.conn {
             let mut stmt = c
-                .prepare("SELECT id, box_id, nonce, origin_path, target_path, task_type FROM cbox_task where status = 0 order by id asc limit 1")
+                .prepare("SELECT id, box_id, nonce, origin_path, target_path, task_type, obj_id FROM cbox_task where status = 0 order by id asc limit 1")
                 .unwrap();
             let box_iter = match stmt.query_map([], |row| {
                 let mut b = CBoxTask::default();
@@ -59,6 +60,7 @@ impl App {
                 b.origin_path = row.get(3)?;
                 b.target_path = row.get(4)?;
                 b.task_type = row.get(5)?;
+                b.obj_id = row.get(6)?;
                 Ok(b)
             }) {
                 Ok(item) => item,
@@ -239,8 +241,8 @@ impl App {
             obj.box_id = box_id;
             obj.obj_id = id;
             obj.status = 0;
-            obj.task_type = 0;
-            obj.nonce = gen_nonce(12);
+            obj.task_type = 1;
+            obj.nonce = Vec::new();
             obj.target_path = target_dir.clone();
             obj.create_at = current()?;
             obj.modify_at = obj.create_at;

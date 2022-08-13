@@ -133,7 +133,7 @@ async fn task_loop(
             appref.get_pending_task()
         };
         match task {
-            Some(task) => match init_task_record(&task, cipherbox_app.clone()) {
+            Some(mut task) => match init_task_record(&mut task, cipherbox_app.clone()) {
                 Ok(mut task_record) => {
                     let cbox = {
                         let applock = cipherbox_app.lock().unwrap();
@@ -317,6 +317,7 @@ async fn task_loop(
                         for download_chore in task_record.download_list.iter_mut() {
                             let p =
                                 std::path::Path::new(&task.target_path).join(&download_chore.path);
+                            println!("recover path");
                             let mut fd = match std::fs::OpenOptions::new()
                                 .write(true)
                                 .create(true)
@@ -636,11 +637,11 @@ mod test {
     use super::*;
 
     fn test_user_key() -> [u8; 32] {
-        let mut uk = [0u8; 32];
-        let rng = cipher::gen_nonce(32);
-        for (i, d) in uk.iter_mut().enumerate() {
-            *d = rng[i]
-        }
+        let mut uk = [3u8; 32];
+        // let rng = cipher::gen_nonce(32);
+        // for (i, d) in uk.iter_mut().enumerate() {
+        //     *d = rng[i]
+        // }
         uk
     }
 
@@ -657,19 +658,19 @@ mod test {
         app.init_db().expect("failed to init sqlite");
         app.set_user_key(test_user_key());
 
-        // create a Cbox
-        let cbpa01: mgr::CreateCboxParams = serde_json::from_str(
-            r#"
-            {
-                "name": "cbox_x_00001",
-                "encryptData": true,
-                "provider": 1,
-                "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweGM3OTJmQkJjZDU5NTc2MzdDNDg0QjVGZTQ5QTE2Q0M0MTFkMkUxMWIiLCJpc3MiOiJ3ZWIzLXN0b3JhZ2UiLCJpYXQiOjE2Mjg3MjY2NTkzNzAsIm5hbWUiOiJmaWxlZGFnIn0.5FK-CyJRRHOKCaUPqNvCCBa4UnF2D2X5cdsT0Xz5_gA"
-            }
-        "#,
-        )
-        .expect("failed tp do json deserialize");
-        let new_box01 = app.create_cbox(cbpa01).expect("failed to create cbox");
+        // // create a Cbox
+        // let cbpa01: mgr::CreateCboxParams = serde_json::from_str(
+        //     r#"
+        //     {
+        //         "name": "cbox_x_00001",
+        //         "encryptData": true,
+        //         "provider": 1,
+        //         "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweGM3OTJmQkJjZDU5NTc2MzdDNDg0QjVGZTQ5QTE2Q0M0MTFkMkUxMWIiLCJpc3MiOiJ3ZWIzLXN0b3JhZ2UiLCJpYXQiOjE2Mjg3MjY2NTkzNzAsIm5hbWUiOiJmaWxlZGFnIn0.5FK-CyJRRHOKCaUPqNvCCBa4UnF2D2X5cdsT0Xz5_gA"
+        //     }
+        // "#,
+        // )
+        // .expect("failed tp do json deserialize");
+        // let new_box01 = app.create_cbox(cbpa01).expect("failed to create cbox");
         // wrap app into Arc/Mutex for multipule thread sharing
         let cipherbox_app = Arc::new(Mutex::new(app));
 
@@ -678,11 +679,14 @@ mod test {
         let hd = async_std::task::spawn(task_control_loop(cipherbox_app.clone(), rx));
         async_std::task::spawn(async move {
             let applock = cipherbox_app.lock().unwrap();
+            // applock
+            //     .add_backup_tasks(
+            //         new_box01.id,
+            //         vec![String::from("/Users/lifeng/nc62/t223.txt")],
+            //     )
+            //     .unwrap();
             applock
-                .add_backup_tasks(
-                    new_box01.id,
-                    vec![String::from("/Users/lifeng/nc62/t223.txt")],
-                )
+                .add_recover_tasks(2, "/Users/lifeng/dmaker/store".to_owned(), vec![2])
                 .unwrap();
 
             // std::thread::sleep_ms(2000);

@@ -12,11 +12,11 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-tauri-build = {version = "1.0.2", features = [] }
+tauri-build = {version = "1.0.2", features = []}
 
 [dependencies]
 anyhow = "1.0.58"
-async-std = {version = "1.12.0", features = ["attributes"] }
+async-std = {version = "1.12.0", features = ["attributes", "tokio1"]}
 cid = "0.8.5"
 futures = "0.3.21"
 fvm_ipld_blockstore = "0.1.1"
@@ -24,14 +24,14 @@ fvm_ipld_car = "0.4.1"
 fvm_ipld_encoding = "0.2.2"
 http = "0.2.8"
 rand = "0.8.5"
-reqwest = {version = "^0.11", features = ["blocking", "json"] }
-rusqlite = {version = "0.27.0", features = ["bundled"] }
+reqwest = {version = "^0.11", features = ["blocking", "json"]}
+rusqlite = {version = "0.27.0", features = ["bundled"]}
 rust-crypto = "0.2.36"
 rustc-serialize = "0.3.24"
-serde = {version = "1.0", features = ["derive"] }
+serde = {version = "1.0", features = ["derive"]}
 serde_cbor = "0.11.2"
 serde_json = "1.0"
-tauri = {version = "1.0.2", features = ["api-all", "macos-private-api"] }
+tauri = {version = "1.0.2", features = ["api-all", "macos-private-api"]}
 thiserror = "1.0"
 tiny_http = "0.11.0"
 toml = "0.5.9"

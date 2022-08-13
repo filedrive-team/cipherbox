@@ -118,7 +118,7 @@ pub struct CBoxObj {
     pub cid: String,
     // hex string of sha256 sum
     pub hash: String,
-    #[serde(skip_deserializing)]
+    #[serde(skip_serializing)]
     pub nonce: Vec<u8>,
     pub size: u64,
     // filename
@@ -160,7 +160,7 @@ pub struct CBoxTask {
     // task type - 0 backup task | 1 recover task
     pub task_type: u8,
     pub err: String,
-    #[serde(skip_deserializing)]
+    #[serde(skip_serializing)]
     pub nonce: Vec<u8>,
 }
 
