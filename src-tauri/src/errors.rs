@@ -16,6 +16,8 @@ pub enum Error {
     BadPassword,
     #[error("session expired")]
     SessionExpired,
+    #[error("Reqwest error: {0}")]
+    Request(#[from] reqwest::Error),
     #[error("* : {0}")]
     Other(String),
 }

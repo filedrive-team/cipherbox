@@ -16,8 +16,8 @@ use crate::{
     cipher::encrypt_or_decrypt,
     errors::Error,
     mgr::{
-        init_task_record, spawn_and_log_error, web3storage_upload, App, ChoreProgress, Chunks,
-        ControlEvent, TaskRecord,
+        init_task_record, spawn_and_log_error, web3storage_download, web3storage_upload, App,
+        ChoreProgress, Chunks, ControlEvent, TaskRecord,
     },
 };
 use async_std::{
@@ -27,6 +27,7 @@ use async_std::{
 use futures::{select, FutureExt};
 use fvm_ipld_encoding::to_vec;
 use mgr::{current, CBoxObj};
+use std::io::prelude::*;
 use std::{
     collections::hash_map::{Entry, HashMap},
     fs::create_dir_all,
@@ -151,165 +152,303 @@ async fn task_loop(
                             }
                         }
                     };
-                    let mut count = 0u64;
-                    for upload_chore in task_record.upload_list.iter_mut() {
-                        count += 1;
-                        // try to open file
-                        let mut fd = match async_std::fs::File::open(&upload_chore.path).await {
-                            Ok(fd) => fd,
-                            Err(err) => {
-                                eprint!(
-                                    "upload chore, failed to open file: {} {}",
-                                    &upload_chore.path, err
-                                );
-                                break;
-                            }
-                        };
-                        let mut buffer = vec![0u8; mgr::CHUNK_SIZE];
-                        loop {
-                            // try to receive control event
-                            select! {
-                                ev = chan.next().fuse() => match ev {
-                                    Some(ev) => match ev {
-                                            ControlEvent::Pause(id) => {
-                                                if id == task.id {
+                    if task_record.backup {
+                        for upload_chore in task_record.upload_list.iter_mut() {
+                            // try to open file
+                            let mut fd = match async_std::fs::File::open(&upload_chore.path).await {
+                                Ok(fd) => fd,
+                                Err(err) => {
+                                    eprint!(
+                                        "upload chore, failed to open file: {} {}",
+                                        &upload_chore.path, err
+                                    );
+                                    break;
+                                }
+                            };
+                            let mut buffer = vec![0u8; mgr::CHUNK_SIZE];
+                            loop {
+                                // try to receive control event
+                                select! {
+                                    ev = chan.next().fuse() => match ev {
+                                        Some(ev) => match ev {
+                                                ControlEvent::Pause(id) => {
+                                                    if id == task.id {
+                                                        let applock = cipherbox_app.lock().unwrap();
+                                                        applock.update_task_status(id, 6).unwrap_or_default();
+                                                        break 'Outer;
+                                                    }
+                                                }
+                                                ControlEvent::PauseAll => {
                                                     let applock = cipherbox_app.lock().unwrap();
-                                                    applock.update_task_status(id, 6).unwrap_or_default();
+                                                    applock.update_task_status(task.id, 6).unwrap_or_default();
                                                     break 'Outer;
                                                 }
-                                            }
-                                            ControlEvent::PauseAll => {
-                                                let applock = cipherbox_app.lock().unwrap();
-                                                applock.update_task_status(task.id, 6).unwrap_or_default();
-                                                break 'Outer;
-                                            }
-                                            ControlEvent::Cancel(id) => {
-                                                if id == task.id {
-                                                    let applock = cipherbox_app.lock().unwrap();
-                                                    applock.update_task_status(id, 7).unwrap_or_default();
-                                                    break 'Outer;
+                                                ControlEvent::Cancel(id) => {
+                                                    if id == task.id {
+                                                        let applock = cipherbox_app.lock().unwrap();
+                                                        applock.update_task_status(id, 7).unwrap_or_default();
+                                                        break 'Outer;
+                                                    }
                                                 }
-                                            }
-                                            _ => {}
-                                    },
-                                    None => {
-                                        break 'Outer;
-                                    }
-                                },
-                                n = read_full(&mut fd, &mut buffer).fuse() => match n {
-                                    Ok(0) => {
-                                        break;
-                                    },
-                                    Ok(n) => {
-                                        let encrypted_data = {
-                                            let mut d = vec![0u8;n];
-                                            if !cbox.encrypt_data { // not encrypted
-                                                d.copy_from_slice(&buffer[..n]);
-                                                d
-                                            } else {
-                                                let applock = cipherbox_app.lock().unwrap();
-                                                let appref = &*applock;
-                                                let key = appref.user_key.as_ref();
-
-                                                if key.is_none() {
-                                                    eprint!("unexpected user key is none");
-                                                    task_err = Some((task_record.task_id, Error::Other("unexpected user key is none".into())));
-                                                    break;
-                                                }
-
-                                                encrypt_or_decrypt(&buffer[..n], &mut d, key.unwrap(), &task.nonce);
-                                                d
-                                            }
-                                        };
-
-                                        match web3storage_upload(encrypted_data, &cbox).await {
-                                            Ok(cid) => {
-                                                upload_chore.chunk_uploaded += 1;
-                                                upload_chore.uploaded_size += n as u64;
-                                                upload_chore.chunks.push(cid);
-                                            },
-                                            Err(err) =>  {
-                                                task_err = Some((task_record.task_id, err));
-                                                break 'Outer;
-                                            }
-                                        };
-                                        task_record.finished_size += n as u64;
-                                        {
-                                            let applock = cipherbox_app.lock().unwrap();
-                                            if let Some(h) = applock.tauri_handle.as_ref() {
-                                                h.emit_all(PROGRESS_EMIT, ChoreProgress{
-                                                    box_id: task.box_id,
-                                                    task_id: task_record.task_id,
-                                                    total: task_record.total,
-                                                    total_size: task_record.total_size,
-                                                    finished: task_record.finished,
-                                                    finished_size: task_record.finished_size,
-                                                    backup: task_record.backup,
-                                                    recover: task_record.recover,
-                                                    err: task_record.err.clone(),
-                                                }).unwrap_or(());
-                                            };
-                                            applock.update_task_progress(task_record.task_id, task_record.total, task_record.total_size, task_record.finished, task_record.finished_size).unwrap_or_else(|e| eprint!("{}", e));
-
+                                                _ => {}
+                                        },
+                                        None => {
+                                            break 'Outer;
                                         }
                                     },
-                                    Err(err) => {
-                                        eprint!("{}", err);
+                                    n = read_full(&mut fd, &mut buffer).fuse() => match n {
+                                        Ok(0) => {
+                                            break;
+                                        },
+                                        Ok(n) => {
+                                            let encrypted_data = {
+                                                let mut d = vec![0u8;n];
+                                                if !cbox.encrypt_data { // not encrypted
+                                                    d.copy_from_slice(&buffer[..n]);
+                                                    d
+                                                } else {
+                                                    let applock = cipherbox_app.lock().unwrap();
+                                                    let appref = &*applock;
+                                                    let key = appref.user_key.as_ref();
+
+                                                    if key.is_none() {
+                                                        eprint!("unexpected user key is none");
+                                                        task_err = Some((task_record.task_id, Error::Other("unexpected user key is none".into())));
+                                                        break;
+                                                    }
+
+                                                    encrypt_or_decrypt(&buffer[..n], &mut d, key.unwrap(), &task.nonce);
+                                                    d
+                                                }
+                                            };
+
+                                            match web3storage_upload(encrypted_data, &cbox).await {
+                                                Ok(cid) => {
+                                                    upload_chore.chunk_uploaded += 1;
+                                                    upload_chore.uploaded_size += n as u64;
+                                                    upload_chore.chunks.push(cid);
+                                                },
+                                                Err(err) =>  {
+                                                    task_err = Some((task_record.task_id, err));
+                                                    break 'Outer;
+                                                }
+                                            };
+                                            task_record.finished_size += n as u64;
+                                            {
+                                                let applock = cipherbox_app.lock().unwrap();
+                                                if let Some(h) = applock.tauri_handle.as_ref() {
+                                                    h.emit_all(PROGRESS_EMIT, ChoreProgress{
+                                                        box_id: task.box_id,
+                                                        task_id: task_record.task_id,
+                                                        total: task_record.total,
+                                                        total_size: task_record.total_size,
+                                                        finished: task_record.finished,
+                                                        finished_size: task_record.finished_size,
+                                                        backup: task_record.backup,
+                                                        recover: task_record.recover,
+                                                        err: task_record.err.clone(),
+                                                    }).unwrap_or(());
+                                                };
+                                                applock.update_task_progress(task_record.task_id, task_record.total, task_record.total_size, task_record.finished, task_record.finished_size).unwrap_or_else(|e| eprint!("{}", e));
+
+                                            }
+                                        },
+                                        Err(err) => {
+                                            eprint!("{}", err);
+                                        }
                                     }
                                 }
                             }
-                        }
-                        let mut chunks_ref = Chunks::default();
-                        chunks_ref.chunk_size = mgr::CHUNK_SIZE as u64;
-                        chunks_ref.chunk_count = upload_chore.chunk_uploaded;
-                        for cid in upload_chore.chunks.iter() {
-                            chunks_ref.chunks.push(cid.clone());
-                        }
-                        let crdata = match to_vec(&chunks_ref) {
-                            Ok(d) => d,
-                            Err(err) => {
-                                task_err = Some((task_record.task_id, Error::from(err)));
-                                break 'Outer;
+                            let mut chunks_ref = Chunks::default();
+                            chunks_ref.chunk_size = mgr::CHUNK_SIZE as u64;
+                            chunks_ref.chunk_count = upload_chore.chunk_uploaded;
+                            for cid in upload_chore.chunks.iter() {
+                                chunks_ref.chunks.push(cid.clone());
                             }
-                        };
-                        match web3storage_upload(crdata, &cbox).await {
-                            Ok(cid) => {
-                                upload_chore.chunks_ref = cid.to_string();
-                            }
-                            Err(err) => {
-                                task_err = Some((task_record.task_id, err));
-                                break 'Outer;
-                            }
-                        };
-                        task_record.finished += 1;
-                        {
-                            let applock = cipherbox_app.lock().unwrap();
-                            if let Some(h) = applock.tauri_handle.as_ref() {
-                                h.emit_all(
-                                    PROGRESS_EMIT,
-                                    ChoreProgress {
-                                        box_id: task.box_id,
-                                        task_id: task_record.task_id,
-                                        total: task_record.total,
-                                        total_size: task_record.total_size,
-                                        finished: task_record.finished,
-                                        finished_size: task_record.finished_size,
-                                        backup: task_record.backup,
-                                        recover: task_record.recover,
-                                        err: task_record.err.clone(),
-                                    },
-                                )
-                                .unwrap_or(());
+                            let crdata = match to_vec(&chunks_ref) {
+                                Ok(d) => d,
+                                Err(err) => {
+                                    task_err = Some((task_record.task_id, Error::from(err)));
+                                    break 'Outer;
+                                }
                             };
-                            applock
-                                .update_task_progress(
-                                    task_record.task_id,
-                                    task_record.total,
-                                    task_record.total_size,
-                                    task_record.finished,
-                                    task_record.finished_size,
-                                )
-                                .unwrap_or_else(|e| eprint!("{}", e));
+                            match web3storage_upload(crdata, &cbox).await {
+                                Ok(cid) => {
+                                    upload_chore.chunks_ref = cid.to_string();
+                                }
+                                Err(err) => {
+                                    task_err = Some((task_record.task_id, err));
+                                    break 'Outer;
+                                }
+                            };
+                            task_record.finished += 1;
+                            {
+                                let applock = cipherbox_app.lock().unwrap();
+                                if let Some(h) = applock.tauri_handle.as_ref() {
+                                    h.emit_all(
+                                        PROGRESS_EMIT,
+                                        ChoreProgress {
+                                            box_id: task.box_id,
+                                            task_id: task_record.task_id,
+                                            total: task_record.total,
+                                            total_size: task_record.total_size,
+                                            finished: task_record.finished,
+                                            finished_size: task_record.finished_size,
+                                            backup: task_record.backup,
+                                            recover: task_record.recover,
+                                            err: task_record.err.clone(),
+                                        },
+                                    )
+                                    .unwrap_or(());
+                                };
+                                applock
+                                    .update_task_progress(
+                                        task_record.task_id,
+                                        task_record.total,
+                                        task_record.total_size,
+                                        task_record.finished,
+                                        task_record.finished_size,
+                                    )
+                                    .unwrap_or_else(|e| eprint!("{}", e));
+                            }
+                        }
+                    }
+                    if task_record.recover {
+                        for download_chore in task_record.download_list.iter_mut() {
+                            let p =
+                                std::path::Path::new(&task.target_path).join(&download_chore.path);
+                            let mut fd = match std::fs::OpenOptions::new()
+                                .write(true)
+                                .create(true)
+                                .open(p)
+                            {
+                                Ok(fd) => fd,
+                                Err(err) => {
+                                    eprint!(
+                                        "download chore, failed to open file: {} {}",
+                                        &download_chore.path, err
+                                    );
+                                    break;
+                                }
+                            };
+                            for cid in download_chore.chunks.iter() {
+                                // try to receive control event
+                                select! {
+                                    ev = chan.next().fuse() => match ev {
+                                        Some(ev) => match ev {
+                                                ControlEvent::Pause(id) => {
+                                                    if id == task.id {
+                                                        let applock = cipherbox_app.lock().unwrap();
+                                                        applock.update_task_status(id, 6).unwrap_or_default();
+                                                        break 'Outer;
+                                                    }
+                                                }
+                                                ControlEvent::PauseAll => {
+                                                    let applock = cipherbox_app.lock().unwrap();
+                                                    applock.update_task_status(task.id, 6).unwrap_or_default();
+                                                    break 'Outer;
+                                                }
+                                                ControlEvent::Cancel(id) => {
+                                                    if id == task.id {
+                                                        let applock = cipherbox_app.lock().unwrap();
+                                                        applock.update_task_status(id, 7).unwrap_or_default();
+                                                        break 'Outer;
+                                                    }
+                                                }
+                                                _ => {}
+                                        },
+                                        None => {
+                                            break 'Outer;
+                                        }
+                                    },
+                                    n = web3storage_download(cid.to_string()).fuse() => match n {
+                                        Ok(d) => {
+                                            let dn = d.len();
+                                            let decrypted_data = {
+                                                if !cbox.encrypt_data { // no need to decrypt data
+                                                    d
+                                                } else {
+                                                    let applock = cipherbox_app.lock().unwrap();
+                                                    let appref = &*applock;
+                                                    let key = appref.user_key.as_ref();
+
+                                                    if key.is_none() {
+                                                        eprint!("unexpected user key is none");
+                                                        task_err = Some((task_record.task_id, Error::Other("unexpected user key is none".into())));
+                                                        break;
+                                                    }
+                                                    let mut od = vec![0u8;d.len()];
+                                                    encrypt_or_decrypt(&d, &mut od, key.unwrap(), &task.nonce);
+                                                    od
+                                                }
+                                            };
+                                            match fd.write(&decrypted_data) {
+                                                Ok(n) => {
+                                                    format!("len: {} write: {}", dn, n)
+                                                }
+                                                Err(err) => {
+                                                    eprint!("write err: {}", err);
+                                                    task_err = Some((task_record.task_id, Error::Other("write err".into())));
+                                                    break;
+                                                }
+                                            };
+
+                                            task_record.finished_size += dn as u64;
+                                            {
+                                                let applock = cipherbox_app.lock().unwrap();
+                                                if let Some(h) = applock.tauri_handle.as_ref() {
+                                                    h.emit_all(PROGRESS_EMIT, ChoreProgress{
+                                                        box_id: task.box_id,
+                                                        task_id: task_record.task_id,
+                                                        total: task_record.total,
+                                                        total_size: task_record.total_size,
+                                                        finished: task_record.finished,
+                                                        finished_size: task_record.finished_size,
+                                                        backup: task_record.backup,
+                                                        recover: task_record.recover,
+                                                        err: task_record.err.clone(),
+                                                    }).unwrap_or(());
+                                                };
+                                                applock.update_task_progress(task_record.task_id, task_record.total, task_record.total_size, task_record.finished, task_record.finished_size).unwrap_or_else(|e| eprint!("{}", e));
+
+                                            }
+                                        },
+                                        Err(err) => {
+                                            eprint!("{}", err);
+                                        }
+                                    }
+                                }
+                            }
+                            task_record.finished += 1;
+                            {
+                                let applock = cipherbox_app.lock().unwrap();
+                                if let Some(h) = applock.tauri_handle.as_ref() {
+                                    h.emit_all(
+                                        PROGRESS_EMIT,
+                                        ChoreProgress {
+                                            box_id: task.box_id,
+                                            task_id: task_record.task_id,
+                                            total: task_record.total,
+                                            total_size: task_record.total_size,
+                                            finished: task_record.finished,
+                                            finished_size: task_record.finished_size,
+                                            backup: task_record.backup,
+                                            recover: task_record.recover,
+                                            err: task_record.err.clone(),
+                                        },
+                                    )
+                                    .unwrap_or(());
+                                };
+                                applock
+                                    .update_task_progress(
+                                        task_record.task_id,
+                                        task_record.total,
+                                        task_record.total_size,
+                                        task_record.finished,
+                                        task_record.finished_size,
+                                    )
+                                    .unwrap_or_else(|e| eprint!("{}", e));
+                            }
                         }
                     }
                     let applock = cipherbox_app.lock().unwrap();
@@ -356,11 +495,14 @@ async fn task_loop(
                             };
                             applock.create_cbox_obj(&cbo).unwrap();
                         }
-                        println!("task finished: {} - count: {}", task_record.finished, count);
-                        applock
-                            .update_task_status(task.id, 5)
-                            .unwrap_or_else(|e| eprint!("{}", e))
+                        println!(
+                            "task #{} finished: {}",
+                            task_record.task_id, task_record.finished
+                        );
                     }
+                    applock
+                        .update_task_status(task.id, 5)
+                        .unwrap_or_else(|e| eprint!("{}", e))
                 }
                 Err(err) => {
                     task_err = Some((task.id, err));
@@ -502,63 +644,58 @@ mod test {
         uk
     }
 
-    // #[async_std::test]
-    // async fn test_main() {
-    //     //let temp_dir = std::env::temp_dir();
-    //     let temp_dir = std::path::PathBuf::from("/Users/lifeng/cipherbox-test");
-    //     // init a App
-    //     let mut app = App::default();
-    //     let (tx, rx) = bounded(10);
-    //     app.task_trigger = Some(tx);
-    //     app.setup(temp_dir.as_os_str().to_owned());
-    //     // init db
-    //     app.init_db().expect("failed to init sqlite");
-    //     app.set_user_key(test_user_key());
+    #[async_std::test]
+    async fn test_main() {
+        //let temp_dir = std::env::temp_dir();
+        let temp_dir = std::path::PathBuf::from("/Users/lifeng/cipherbox-test");
+        // init a App
+        let mut app = App::default();
+        let (tx, rx) = bounded(10);
+        app.task_trigger = Some(tx);
+        app.setup(temp_dir.as_os_str().to_owned());
+        // init db
+        app.init_db().expect("failed to init sqlite");
+        app.set_user_key(test_user_key());
 
-    //     // create a Cbox
-    //     let cbpa01: mgr::CreateCboxParams = serde_json::from_str(
-    //         r#"
-    //         {
-    //             "name": "cbox_x_00002",
-    //             "encryptData": true,
-    //             "provider": 1,
-    //             "accessToken": "token:for:web3.storage"
-    //         }
-    //     "#,
-    //     )
-    //     .expect("failed tp do json deserialize");
-    //     let new_box01 = app.create_cbox(cbpa01).expect("failed to create cbox");
-    //     // wrap app into Arc/Mutex for multipule thread sharing
-    //     let cipherbox_app = Arc::new(Mutex::new(app));
+        // create a Cbox
+        let cbpa01: mgr::CreateCboxParams = serde_json::from_str(
+            r#"
+            {
+                "name": "cbox_x_00001",
+                "encryptData": true,
+                "provider": 1,
+                "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweGM3OTJmQkJjZDU5NTc2MzdDNDg0QjVGZTQ5QTE2Q0M0MTFkMkUxMWIiLCJpc3MiOiJ3ZWIzLXN0b3JhZ2UiLCJpYXQiOjE2Mjg3MjY2NTkzNzAsIm5hbWUiOiJmaWxlZGFnIn0.5FK-CyJRRHOKCaUPqNvCCBa4UnF2D2X5cdsT0Xz5_gA"
+            }
+        "#,
+        )
+        .expect("failed tp do json deserialize");
+        let new_box01 = app.create_cbox(cbpa01).expect("failed to create cbox");
+        // wrap app into Arc/Mutex for multipule thread sharing
+        let cipherbox_app = Arc::new(Mutex::new(app));
 
-    //     // spawn a thread
-    //     // loop for trigger or pause async task
-    //     let hd = async_std::task::spawn(task_control_loop(cipherbox_app.clone(), rx));
-    //     async_std::task::spawn(async move {
-    //         let applock = cipherbox_app.lock().unwrap();
-    //         applock
-    //             .add_backup_tasks(
-    //                 new_box01.id,
-    //                 vec![
-    //                     String::from("/Users/lifeng/nc62/piecestore"),
-    //                     String::from("/Users/lifeng/nc62/pshelper"),
-    //                     String::from("/Users/lifeng/nc62/deal-maker"),
-    //                     String::from("/Users/lifeng/nc62/filejoy"),
-    //                 ],
-    //             )
-    //             .unwrap();
+        // spawn a thread
+        // loop for trigger or pause async task
+        let hd = async_std::task::spawn(task_control_loop(cipherbox_app.clone(), rx));
+        async_std::task::spawn(async move {
+            let applock = cipherbox_app.lock().unwrap();
+            applock
+                .add_backup_tasks(
+                    new_box01.id,
+                    vec![String::from("/Users/lifeng/nc62/t223.txt")],
+                )
+                .unwrap();
 
-    //         std::thread::sleep_ms(2000);
-    //         async_std::task::block_on(
-    //             applock
-    //                 .task_trigger
-    //                 .as_ref()
-    //                 .unwrap()
-    //                 .send(ControlEvent::Pause(1)),
-    //         )
-    //         .unwrap();
-    //     });
+            // std::thread::sleep_ms(2000);
+            // async_std::task::block_on(
+            //     applock
+            //         .task_trigger
+            //         .as_ref()
+            //         .unwrap()
+            //         .send(ControlEvent::Pause(1)),
+            // )
+            // .unwrap();
+        });
 
-    //     hd.await;
-    // }
+        hd.await;
+    }
 }

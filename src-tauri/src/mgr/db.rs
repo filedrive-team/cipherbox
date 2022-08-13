@@ -41,15 +41,15 @@ impl App {
                     path TEXT,
                     origin_path TEXT,
                     obj_type INTEGER,
-                    create_at INTEGER,
-                    modify_at INTEGER,
+                    create_at INTEGER DEFAULT 0,
+                    modify_at INTEGER DEFAULT 0,
                     parent_id INTEGER DEFAULT 0
                 );
                 CREATE UNIQUE INDEX IF NOT EXISTS index_cbox_obj_path ON cbox_obj (box_id, path);
                 CREATE TABLE IF NOT EXISTS cbox_task (
                     id    INTEGER PRIMARY KEY AUTOINCREMENT,
                     box_id INTEGER,
-                    obj_id INTEGER,
+                    obj_id INTEGER DEFAULT 0,
                     nonce BLOB,
                     origin_path TEXT,
                     target_path TEXT,

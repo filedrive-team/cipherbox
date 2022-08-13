@@ -121,10 +121,6 @@ pub async fn box_obj_list(
 }
 
 /*
- * api - backup directory
- */
-
-/*
  * api - backup files
  */
 
@@ -136,6 +132,24 @@ pub async fn backup(
 ) -> Result<CommonRes<()>, Error> {
     let app = app.lock().unwrap();
     match app.add_backup_tasks(box_id, targets) {
+        Ok(_) => Ok(CommonRes::ok(())),
+        Err(e) => Ok(CommonRes::error(e)),
+    }
+}
+
+/*
+ * api - recover files
+ */
+
+#[tauri::command]
+pub async fn recover(
+    box_id: i64,
+    target_dir: String,
+    obj_ids: Vec<i64>,
+    app: State<'_, Arc<Mutex<App>>>,
+) -> Result<CommonRes<()>, Error> {
+    let app = app.lock().unwrap();
+    match app.add_recover_tasks(box_id, target_dir, obj_ids) {
         Ok(_) => Ok(CommonRes::ok(())),
         Err(e) => Ok(CommonRes::error(e)),
     }

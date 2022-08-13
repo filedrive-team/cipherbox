@@ -216,11 +216,52 @@ impl App {
         let c = self.conn.as_ref().unwrap();
         c.execute(
             r#"
-            insert into cbox_task (box_id, nonce, origin_path, target_path, task_type, create_at, modify_at, status, err, total, total_size, finished, finished_size) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+            insert into cbox_task (box_id, obj_id, nonce, origin_path, target_path, task_type, create_at, modify_at, status, err, total, total_size, finished, finished_size) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
         "#,
-            params![par.box_id, par.nonce, par.origin_path, par.target_path, par.task_type, par.create_at, par.modify_at, par.status, par.err, par.total, par.total_size, par.finished, par.finished_size],
+            params![par.box_id, par.obj_id, par.nonce, par.origin_path, par.target_path, par.task_type, par.create_at, par.modify_at, par.status, par.err, par.total, par.total_size, par.finished, par.finished_size],
         )?;
         Ok(c.last_insert_rowid())
+    }
+    pub fn add_recover_tasks(
+        &self,
+        box_id: i64,
+        target_dir: String,
+        obj_ids: Vec<i64>,
+    ) -> Result<(), Error> {
+        if !self.has_connection() {
+            return Err(Error::NoDBConnection);
+        }
+        let mut task_list = Vec::<CBoxTask>::with_capacity(obj_ids.len());
+
+        for id in obj_ids.into_iter() {
+            //let meta = std::fs::metadata(p)?;
+            let mut obj = CBoxTask::default();
+            obj.box_id = box_id;
+            obj.obj_id = id;
+            obj.status = 0;
+            obj.task_type = 0;
+            obj.nonce = gen_nonce(12);
+            obj.target_path = target_dir.clone();
+            obj.create_at = current()?;
+            obj.modify_at = obj.create_at;
+            task_list.push(obj);
+        }
+        // add single tasks
+        for obj in task_list.iter() {
+            self.create_cbox_task(obj)?;
+        }
+
+        // TODO:
+        // trigger async backup or recover task
+        if let Some(s) = &self.task_trigger {
+            match async_std::task::block_on(s.send(ControlEvent::LoopStart)) {
+                Ok(_) => {}
+                Err(e) => {
+                    eprintln!("failed to send LoopStart message: {}", e);
+                }
+            }
+        }
+        Ok(())
     }
     pub fn add_backup_tasks(&self, box_id: i64, targets: Vec<String>) -> Result<(), Error> {
         if !self.has_connection() {
@@ -235,20 +276,7 @@ impl App {
             obj.status = 0;
             obj.task_type = 0;
             obj.nonce = gen_nonce(12);
-
-            // match std::path::Path::new(p).file_name() {
-            //     Some(n) => match n.to_str() {
-            //         Some(n) => obj.name = n.to_owned(),
-            //         None => {
-            //             return Err(Error::Other(format!("failed to read file name for {}", p)))
-            //         }
-            //     },
-            //     None => return Err(Error::Other(format!("failed to read file name for {}", p))),
-            // }
-
             obj.origin_path = p.clone();
-
-            //obj.nonce = gen_nonce(12);
             obj.create_at = current()?;
             obj.modify_at = obj.create_at;
             task_list.push(obj);

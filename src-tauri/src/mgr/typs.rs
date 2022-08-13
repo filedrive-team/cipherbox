@@ -144,6 +144,7 @@ pub struct CBoxObj {
 pub struct CBoxTask {
     pub id: i64,
     pub box_id: i64,
+    pub obj_id: i64,
     // path of file in host file system
     pub origin_path: String,
     // target path to do recover
@@ -207,9 +208,20 @@ pub struct TaskRecord {
     pub finished_size: u64,
     pub backup: bool,
     pub recover: bool,
-    #[serde(skip)]
     pub upload_list: Vec<ChoreUploadRecord>,
+    pub download_list: Vec<ChoreDownloadRecord>,
     pub err: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ChoreDownloadRecord {
+    pub path: String,
+    pub hash: String,
+    pub size: u64,
+    pub chunk_count: u64,
+    pub chunk_downloaded: u64,
+    pub downloaded_size: u64,
+    pub chunks: Vec<Cid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -230,7 +242,7 @@ pub struct Chunks {
     pub chunks: Vec<Cid>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct RawBlock {
     pub data: Vec<u8>,
 }
