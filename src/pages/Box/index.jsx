@@ -77,9 +77,24 @@ const Box = () => {
               <OpenIcon />
             </div>
           );
-        } else {
         }
-        return <DownLoadIcon />;
+        return (
+          <div
+            onClick={async () => {
+              const path = await open({
+                directory: true,
+              });
+
+              _ = await invoke('recover', {
+                boxId: value.boxId,
+                targetDir: path,
+                objIds: [value.id],
+              });
+            }}
+          >
+            <DownLoadIcon />
+          </div>
+        );
       },
     },
   ];
