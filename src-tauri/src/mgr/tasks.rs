@@ -77,13 +77,13 @@ impl App {
                 None
             } else {
                 let task = list.remove(0);
-                let status = match task.task_type {
-                    0 => 1,
-                    1 => 3,
-                    _ => 1,
-                };
+                // let status = match task.task_type {
+                //     0 => 1,
+                //     1 => 3,
+                //     _ => 1,
+                // };
                 // update task state
-                match self.update_task_status(task.id, status) {
+                match self.update_task_status(task.id, 1) {
                     Ok(_) => Some(task),
                     Err(err) => {
                         eprint!("{:?}", err);
