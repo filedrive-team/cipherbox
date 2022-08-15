@@ -10,7 +10,7 @@ mod mgr;
 
 use crate::commands::{
     app_info, backup, box_create, box_list, box_obj_list, box_set_active, password_set,
-    password_verify, task_cancel, task_list, task_pause, task_resume,
+    password_verify, recover, task_cancel, task_list, task_pause, task_resume,
 };
 use crate::{
     cipher::encrypt_or_decrypt,
@@ -615,6 +615,7 @@ async fn main() -> () {
             task_cancel,
             task_resume,
             task_pause,
+            recover,
         ])
         .build(context)
         .expect("error while running tauri application");
@@ -665,7 +666,7 @@ mod test {
         //         "name": "cbox_x_00001",
         //         "encryptData": true,
         //         "provider": 1,
-        //         "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweGM3OTJmQkJjZDU5NTc2MzdDNDg0QjVGZTQ5QTE2Q0M0MTFkMkUxMWIiLCJpc3MiOiJ3ZWIzLXN0b3JhZ2UiLCJpYXQiOjE2Mjg3MjY2NTkzNzAsIm5hbWUiOiJmaWxlZGFnIn0.5FK-CyJRRHOKCaUPqNvCCBa4UnF2D2X5cdsT0Xz5_gA"
+        //         "accessToken": "000"
         //     }
         // "#,
         // )
