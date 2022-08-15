@@ -7,7 +7,7 @@ import { exists } from 'tauri-plugin-fs-extra-api';
 class TaskStore {
   /**
    * @type [{
-   * start:boolean,
+   * paused:boolean,
    * percent:number,
    * boxId:number,
    * cid:string,
@@ -21,17 +21,24 @@ class TaskStore {
    * path:string,
    * size:number,
    * status:number,
-   * originPath:string,
    * total_size:number,
    * finished_size:number
+   * targetPath:string,
+   * taskType:number
    * }]
    *
    */
   data = [];
 
+  get taskData() {
+    return this.data.filter((value) => {
+      return value.status !== 7;
+    });
+  }
+
   /**
    *@type [{
-   * start:boolean,
+   * paused:boolean,
    * percent:number,
    * boxId:number,
    * cid:string,
@@ -45,7 +52,9 @@ class TaskStore {
    * ,path:string,
    * size:number,
    * status:number
-   * originPath:string
+   * originPath:string,
+   * targetPath:string,
+   * taskType:number
    * }]
    */
   alreadyData = [];
@@ -73,7 +82,6 @@ class TaskStore {
     listen('task_update', (event) => {
       if (event.event === 'task_update') {
         if (event.payload.finished === 1) {
-          console.log('===================task_update+++++');
           this.fetchAreadyData();
           this.fetchData();
           this.fetchBoxData();
@@ -94,6 +102,7 @@ class TaskStore {
     let _data = _.clone(this.data);
     _data.map((value, index) => {
       if (value.id === item.task_id) {
+        value.paused = false;
         value.totalSize = item.total_size;
         value.finishedSize = item.finished_size;
       }
@@ -105,14 +114,55 @@ class TaskStore {
     });
   }
 
+  /**
+   *
+   * @param {boolean} paused
+   * @param {number} id
+   */
+  async SET_TASK_PAUSE(paused, id) {
+    let _data = _.clone(this.data);
+    _data.map((value, index) => {
+      if (value.id === id) {
+        value.paused = paused;
+      }
+      return value;
+    });
+    runInAction(() => {
+      this.data = _data;
+    });
+  }
+
+  /**
+   *
+   * @param {*} id
+   */
+  async SET_TASK_CANCLE(id) {
+    let _data = _.clone(this.data);
+    _data.map((value, index) => {
+      if (value.id === id) {
+        console.log('======================+++');
+        value.status = 7;
+      }
+      return value;
+    });
+    runInAction(() => {
+      this.data = _data;
+    });
+  }
+
   async fetchData() {
     const taskList = await invoke('task_list', {
       status: [0, 1, 6, 9],
     });
-    const result = taskList.result;
-
+    let result = taskList.result;
+    let _data = result.map((value) => {
+      if (value.status === 6) {
+        value.paused = true;
+      }
+      return value;
+    });
     runInAction(() => {
-      this.data = result;
+      this.data = _data;
     });
   }
 

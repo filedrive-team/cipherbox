@@ -19,6 +19,8 @@ import { observer } from 'mobx-react';
 import BigNumber from 'bignumber.js';
 import prettyBytes from 'pretty-bytes';
 import dayjs from 'dayjs';
+import { invoke } from '@tauri-apps/api/tauri';
+import { ask } from '@tauri-apps/api/dialog';
 const tabData = [
   {
     icon: copyIcon,
@@ -36,13 +38,18 @@ const Backup = () => {
   const columns = [
     {
       title: 'Path',
-      dataIndex: 'originPath',
-      key: 'originPath',
+      dataIndex: '_originPath',
+      key: '_originPath',
       width: 50,
-      render: (text) => {
+      render: (_, value) => {
         return (
-          <Tooltip trigger={'click'} title={text}>
-            <div className={classNames(styles.path)}>{text}</div>
+          <Tooltip
+            trigger={'click'}
+            title={value.taskType === 0 ? value.originPath : value.targetPath}
+          >
+            <div className={classNames(styles.path)}>
+              {value.taskType === 0 ? value.originPath : value.targetPath}
+            </div>
           </Tooltip>
         );
       },
@@ -95,21 +102,38 @@ const Backup = () => {
         return (
           <div className={styles.operationWrap}>
             <DeleteIcon
-              onClick={() => {
-                console.log('====DeleteIcon====++++=', taskStore.data);
+              onClick={async () => {
+                const askRes = await ask(
+                  'Are you sure want to cancel this task?',
+                  {
+                    type: 'warning',
+                  },
+                );
+
+                if (askRes) {
+                  await invoke('task_cancel', {
+                    id: value.id,
+                  });
+                  taskStore.SET_TASK_CANCLE(value.id);
+                }
               }}
             />
-
-            {value.start ? (
-              <StopIcon
-                onClick={() => {
-                  console.log('====StopIcon====++++=');
+            {value.paused ? (
+              <StartIcon
+                onClick={async () => {
+                  await invoke('task_resume', {
+                    id: value.id,
+                  });
+                  taskStore.SET_TASK_PAUSE(false, value.id);
                 }}
               />
             ) : (
-              <StartIcon
-                onClick={() => {
-                  console.log('====StartIcon====++++=');
+              <StopIcon
+                onClick={async () => {
+                  await invoke('task_pause', {
+                    id: value.id,
+                  });
+                  taskStore.SET_TASK_PAUSE(true, value.id);
                 }}
               />
             )}
@@ -122,13 +146,18 @@ const Backup = () => {
   const alreadyColumns = [
     {
       title: 'Path',
-      dataIndex: 'originPath',
-      key: 'originPath',
+      dataIndex: '_originPath',
+      key: '_originPath',
       width: 100,
-      render: (text) => {
+      render: (_, value) => {
         return (
-          <Tooltip trigger={'click'} title={text}>
-            <div className={classNames(styles.path)}>{text}</div>
+          <Tooltip
+            trigger={'click'}
+            title={value.taskType === 0 ? value.originPath : value.targetPath}
+          >
+            <div className={classNames(styles.path)}>
+              {value.taskType === 0 ? value.originPath : value.targetPath}
+            </div>
           </Tooltip>
         );
       },
@@ -155,7 +184,11 @@ const Backup = () => {
       width: '160',
       align: 'right',
       render: (_, value) => {
-        return <div className={styles.operationWrap}>已备份</div>;
+        return (
+          <div className={styles.operationWrap}>
+            {value.taskType === 0 ? '已备份' : '已恢复'}
+          </div>
+        );
       },
     },
   ];
@@ -194,7 +227,7 @@ const Backup = () => {
           <>
             <List
               columns={columns}
-              dataSource={taskStore.data}
+              dataSource={taskStore.taskData}
               rowKey={(value) => {
                 return value.id;
               }}
