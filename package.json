@@ -26,7 +26,9 @@
     "react-router-dom": "^5.2.1",
     "react-transition-group": "^2.9.0",
     "tauri-plugin-fs-extra-api": "github:tauri-apps/tauri-plugin-fs-extra",
-    "vite-plugin-imp": "^2.2.0"
+    "vite-plugin-imp": "^2.2.0",
+    "react-i18next": "^11.18.3",
+    "i18next": "^21.9.0"
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.17.0",

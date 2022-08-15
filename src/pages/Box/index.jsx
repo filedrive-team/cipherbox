@@ -23,36 +23,37 @@ import List from '@/components/List';
 import prettyBytes from 'pretty-bytes';
 import dayjs from 'dayjs';
 import taskStore from '@/store/modules/task';
-
-const tabData = [
-  {
-    icon: copyIcon,
-    bg: copyButton,
-    name: '备份',
-  },
-  {
-    icon: switchIcon,
-    bg: switchButton,
-    name: '切换',
-  },
-];
-
+import { useTranslation } from 'react-i18next';
 const Box = () => {
+  const { t } = useTranslation();
+
+  const tabData = [
+    {
+      icon: copyIcon,
+      bg: copyButton,
+      name: t('box.backup'),
+    },
+    {
+      icon: switchIcon,
+      bg: switchButton,
+      name: t('box.switch'),
+    },
+  ];
   const columns = [
     {
-      title: '文件名',
+      title: t('box.file_name'),
       dataIndex: 'name',
       key: 'name',
       render: (text) => <div>{text}</div>,
     },
     {
-      title: '文件大小',
+      title: t('box.file_size'),
       dataIndex: 'size',
       key: 'size',
       render: (value) => <div>{prettyBytes(value)}</div>,
     },
     {
-      title: '备份时间',
+      title: t('box.backup_time'),
       dataIndex: 'createAt',
       key: 'createAt',
       render: (value) => (
@@ -60,7 +61,7 @@ const Box = () => {
       ),
     },
     {
-      title: '操作',
+      title: t('box.operation'),
       dataIndex: 'operate',
       key: 'operate',
       render: (_, value) => {
@@ -146,7 +147,7 @@ const Box = () => {
               history.push(RouterPath.create);
             }}
           >
-            创建盒子
+            {t('box.create')}
           </div>
         ),
       });
@@ -161,7 +162,7 @@ const Box = () => {
                 history.push(RouterPath.create);
               }}
             >
-              创建盒子
+              {t('box.create')}
             </div>
           ),
         },

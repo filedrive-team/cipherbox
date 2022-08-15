@@ -21,26 +21,27 @@ import prettyBytes from 'pretty-bytes';
 import dayjs from 'dayjs';
 import { invoke } from '@tauri-apps/api/tauri';
 import { ask } from '@tauri-apps/api/dialog';
-const tabData = [
-  {
-    icon: copyIcon,
-    bg: copyButton,
-    name: '备份中',
-  },
-  {
-    icon: switchIcon,
-    bg: switchButton,
-    name: '已备份',
-  },
-];
-
+import { useTranslation } from 'react-i18next';
 const Backup = () => {
+  const { t } = useTranslation();
+  const tabData = [
+    {
+      icon: copyIcon,
+      bg: copyButton,
+      name: t('task.processing'),
+    },
+    {
+      icon: switchIcon,
+      bg: switchButton,
+      name: t('task.done'),
+    },
+  ];
   const columns = [
     {
-      title: 'Path',
+      title: t('task.path'),
       dataIndex: '_originPath',
       key: '_originPath',
-      width: 50,
+      width: 100,
       render: (_, value) => {
         return (
           <Tooltip
@@ -55,14 +56,14 @@ const Backup = () => {
       },
     },
     {
-      title: 'Size',
+      title: t('box.file_size'),
       dataIndex: 'totalSize',
       key: 'totalSize',
       align: 'center',
       render: (value) => <div>{value === 0 ? '-' : prettyBytes(value)}</div>,
     },
     {
-      title: '进度',
+      title: t('task.progress'),
       dataIndex: 'createAt',
       key: 'createAt',
       render: (_, value) => {
@@ -93,7 +94,7 @@ const Backup = () => {
       },
     },
     {
-      title: '操作',
+      title: t('task.operation'),
       dataIndex: 'operation',
       key: 'operation',
       width: '160',
@@ -145,7 +146,7 @@ const Backup = () => {
 
   const alreadyColumns = [
     {
-      title: 'Path',
+      title: t('task.path'),
       dataIndex: '_originPath',
       key: '_originPath',
       width: 100,
@@ -163,14 +164,14 @@ const Backup = () => {
       },
     },
     {
-      title: 'Size',
+      title: t('box.file_size'),
       dataIndex: 'totalSize',
       key: 'totalSize',
       align: 'center',
       render: (value) => <div>{value === 0 ? '-' : prettyBytes(value)}</div>,
     },
     {
-      title: '备份时间',
+      title: t('task.backup_time'),
       dataIndex: 'createAt',
       key: 'createAt',
       render: (value) => (
@@ -178,7 +179,7 @@ const Backup = () => {
       ),
     },
     {
-      title: '状态',
+      title: t('task.status'),
       dataIndex: 'operation',
       key: 'operation',
       width: '160',
@@ -186,7 +187,7 @@ const Backup = () => {
       render: (_, value) => {
         return (
           <div className={styles.operationWrap}>
-            {value.taskType === 0 ? '已备份' : '已恢复'}
+            {value.taskType === 0 ? t('task.backed') : t('task.restored')}
           </div>
         );
       },

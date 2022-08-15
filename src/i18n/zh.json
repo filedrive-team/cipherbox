@@ -1,0 +1,49 @@
+{
+    "side_bar": {
+        "dashboard": "工作台",
+        "task": "任务"
+    },
+    "box": {
+        "create": "创建盒子",
+        "feed_back": "反馈",
+        "backup": "备份",
+        "switch": "切换",
+        "file_name": "文件名",
+        "file_size": "文件大小",
+        "backup_time": "备份时间",
+        "operation": "操作"
+    },
+    "task": {
+        "processing": "进行中",
+        "done": "已完成",
+        "path": "路径",
+        "file_size": "文件大小",
+        "progress": "进度",
+        "backup_time": "备份时间",
+        "operation": "操作",
+        "status": "状态",
+        "backed": "已备份",
+        "restored": "已恢复"
+    },
+    "password": {
+        "enter_passord": "输入密码",
+        "confirm": "确认"
+    },
+    "create": {
+        "create": "创建",
+        "create_tips": "创建属于你的{{msg}}",
+        "modal": {
+            "is_security": "Box是否加密",
+            "cipher": "加密",
+            "no_cipher": "不加密",
+            "select_data_source": "选择数据源",
+            "web3.storage": "Web3.storage",
+            "name": "Box 名称",
+            "enter_name": "输入名称",
+            "create": "创建",
+            "create_box": "创建CipherBox",
+            "enter_token": "输入Token",
+            "box_exist": "'盒子已存在!'"
+        }
+    }
+}

@@ -1,11 +1,10 @@
 import SideBar from '@/components/SideBar';
 import styles from './index.module.scss';
 import classNames from 'classnames';
-import { Input, Menu } from 'antd';
+import { Input } from 'antd';
 import { ReactComponent as SearchIcon } from '@/assets/home/search.svg';
 
 import { RouterPath } from '@/router';
-import { useEffect } from 'react';
 import { Route, Switch } from 'react-router-dom';
 import Backup from '@/pages/Backup';
 import Box from '@/pages/Box';

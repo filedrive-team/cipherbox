@@ -9,8 +9,11 @@ import { observer } from 'mobx-react';
 import boxStore from '@/store/modules/box';
 import { RouterPath } from '@/router';
 import { useHistory } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 const SideBar = () => {
+  const { t } = useTranslation();
+
   const history = useHistory();
 
   /**
@@ -21,13 +24,13 @@ const SideBar = () => {
     {
       componentLight: OperationLightIcon,
       component: OperationIcon,
-      title: '工作台',
+      title: t('side_bar.dashboard'),
       url: RouterPath.box,
     },
     {
       componentLight: ProcessLightIcon,
       component: ProcessIcon,
-      title: '备份状态',
+      title: t('side_bar.task'),
       url: RouterPath.backup,
     },
   ];

@@ -7,8 +7,9 @@ import { useHistory } from 'react-router';
 import { RouterPath } from '@/router';
 import { invoke } from '@tauri-apps/api';
 import { useState } from 'react';
-
+import { useTranslation } from 'react-i18next';
 const Password = () => {
+  const { t } = useTranslation();
   const history = useHistory();
   const [password, setPassword] = useState('');
   const onConfirm = async () => {
@@ -36,7 +37,7 @@ const Password = () => {
         history.push(RouterPath.create);
       }
     } else {
-      const password_set = invoke('password_set', { password: password });
+      await invoke('password_set', { password: password });
       history.push(RouterPath.create);
     }
   };
@@ -72,10 +73,10 @@ const Password = () => {
                 setPassword(e.target.value);
               }}
               type={'password'}
-              placeholder={'输入密钥'}
+              placeholder={t('password.enter_passord')}
             />
             <div onClick={onConfirm} className={styles.confirm}>
-              确认
+              {t('password.confirm')}
             </div>
           </div>
         </div>
