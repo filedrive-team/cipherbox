@@ -1,5 +1,49 @@
 {
   "side_bar": {
-    "dashboard": "工作台"
+    "dashboard": "Dashboard",
+    "task": "Task"
+  },
+  "box": {
+    "create": "Create Box",
+    "feed_back": "Feedback",
+    "backup": "Backup",
+    "switch": "Switch",
+    "file_name": "File Name",
+    "file_size": "File Size",
+    "backup_time": "Backup Time",
+    "operation": "Operation"
+  },
+  "task": {
+    "processing": "In Progress",
+    "done": "Completed",
+    "path": "Path",
+    "file_size": "File Size",
+    "progress": "Progress",
+    "backup_time": "Backup Time",
+    "operation": "Operation",
+    "status": "Status",
+    "backed": "Backed Up",
+    "restored": "Restored"
+  },
+  "password": {
+    "enter_passord": "Enter Password",
+    "confirm": "Confirm"
+  },
+  "create": {
+    "create": "Create",
+    "create_tips": "Create Your Own{{msg}}",
+    "modal": {
+      "is_security": "Cipher the Box?",
+      "cipher": "Yes",
+      "no_cipher": "No",
+      "select_data_source": "Select Data Source",
+      "web3.storage": "Web3.storage",
+      "name": "Box Name",
+      "enter_name": "Enter Name",
+      "create": "Create",
+      "create_box": "Create CipherBox",
+      "enter_token": "Enter Token",
+      "box_exist": "'The box already exists!'"
+    }
   }
 }

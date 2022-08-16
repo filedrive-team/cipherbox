@@ -88,7 +88,7 @@ const Backup = () => {
               showInfo={false}
               strokeWidth={4}
             ></Progress>
-            <div>正在备份中{parseFloat(p)}%</div>
+            <div>{parseFloat(p)}%</div>
           </div>
         );
       },
