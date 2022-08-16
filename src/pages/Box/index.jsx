@@ -212,7 +212,9 @@ const Box = () => {
                 className={styles.tabItem}
                 style={{ '--bg': value.bg, '--prefix': value.icon }}
                 onClick={async () => {
-                  const path = await open();
+                  const path = await open({
+                    multiple: true,
+                  });
 
                   /**
                    * @type {
@@ -223,7 +225,7 @@ const Box = () => {
                   const appInfo = (await invoke('app_info')).result;
                   await invoke('backup', {
                     boxId: appInfo.activeBox.id,
-                    targets: [path],
+                    targets: path,
                   });
                 }}
               >
